@@ -1,7 +1,9 @@
+from decimal import Decimal
+
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from sqlalchemy import func
 
-from models import FinanceRecord, db
+from models import FinanceDistributionRule, FinanceRecord, FinanceRecordDistribution, db
 from utils import (
     apply_sort,
     dictionary_values,
@@ -13,6 +15,29 @@ from utils import (
 )
 
 bp = Blueprint("finances", __name__, url_prefix="/finances")
+
+
+def _apply_distribution(record):
+    """Удаляет старые распределения и рассчитывает новые для дохода."""
+    if record.type != "income":
+        return
+    FinanceRecordDistribution.query.filter_by(record_id=record.id).delete()
+    rules = (
+        FinanceDistributionRule.query.filter_by(active=True)
+        .order_by(FinanceDistributionRule.order, FinanceDistributionRule.name)
+        .all()
+    )
+    for rule in rules:
+        amount = (record.amount * rule.percent) / Decimal(100)
+        if amount > 0:
+            db.session.add(
+                FinanceRecordDistribution(
+                    record_id=record.id,
+                    rule_id=rule.id,
+                    name=rule.name,
+                    amount=amount,
+                )
+            )
 
 
 @bp.route("/")
@@ -89,6 +114,8 @@ def add():
             description=description, amount=amount, date=rdate, type=rtype, category=category
         )
         db.session.add(record)
+        db.session.flush()
+        _apply_distribution(record)
         db.session.commit()
         flash("Запись добавлена", "success")
         return redirect(url_for("finances.index"))
@@ -126,6 +153,7 @@ def edit(id):
         record.date = rdate
         record.type = rtype
         record.category = save_dictionary_value("finance_category", category) or category
+        _apply_distribution(record)
         db.session.commit()
         flash("Запись обновлена", "success")
         return redirect(url_for("finances.index"))
@@ -167,3 +195,79 @@ def export():
         )
     headers = ["Дата", "Описание", "Тип", "Категория", "Сумма"]
     return excel_response(headers, rows, "finansi.xlsx")
+
+
+@bp.route("/report")
+@login_required
+def report():
+    period = request.args.get("period", "")
+    date_from = parse_date(request.args.get("date_from"))
+    date_to = parse_date(request.args.get("date_to"))
+    if period:
+        date_from, date_to = period_bounds(period)
+
+    q = FinanceRecord.query
+    if date_from:
+        q = q.filter(FinanceRecord.date >= date_from)
+    if date_to:
+        q = q.filter(FinanceRecord.date <= date_to)
+
+    income = (
+        q.filter(FinanceRecord.type == "income")
+        .with_entities(func.sum(FinanceRecord.amount))
+        .scalar()
+        or 0
+    )
+    expense = (
+        q.filter(FinanceRecord.type == "expense")
+        .with_entities(func.sum(FinanceRecord.amount))
+        .scalar()
+        or 0
+    )
+
+    distribution_q = db.session.query(
+        FinanceRecordDistribution.name,
+        func.sum(FinanceRecordDistribution.amount).label("total"),
+    ).join(FinanceRecord)
+    if date_from:
+        distribution_q = distribution_q.filter(FinanceRecord.date >= date_from)
+    if date_to:
+        distribution_q = distribution_q.filter(FinanceRecord.date <= date_to)
+    distributions = (
+        distribution_q.group_by(FinanceRecordDistribution.name)
+        .order_by(func.sum(FinanceRecordDistribution.amount).desc())
+        .all()
+    )
+
+    category_q = db.session.query(
+        FinanceRecord.type,
+        FinanceRecord.category,
+        func.sum(FinanceRecord.amount).label("total"),
+    )
+    if date_from:
+        category_q = category_q.filter(FinanceRecord.date >= date_from)
+    if date_to:
+        category_q = category_q.filter(FinanceRecord.date <= date_to)
+    categories = (
+        category_q.group_by(FinanceRecord.type, FinanceRecord.category)
+        .order_by(func.sum(FinanceRecord.amount).desc())
+        .all()
+    )
+
+    total_distributed = sum(d.total for d in distributions) if distributions else 0
+    balance = income - expense
+    net = balance - total_distributed
+
+    return render_template(
+        "finances/report.html",
+        income=income,
+        expense=expense,
+        balance=balance,
+        net=net,
+        total_distributed=total_distributed,
+        distributions=distributions,
+        categories=categories,
+        period=period,
+        date_from=request.args.get("date_from", ""),
+        date_to=request.args.get("date_to", ""),
+    )

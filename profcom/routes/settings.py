@@ -4,7 +4,16 @@ import shutil
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
 import config
-from models import Admin, AnniversarySetting, Dictionary, PayoutCategory, PayoutType, Position, db
+from models import (
+    Admin,
+    AnniversarySetting,
+    Dictionary,
+    FinanceDistributionRule,
+    PayoutCategory,
+    PayoutType,
+    Position,
+    db,
+)
 from utils import login_required, parse_decimal
 
 bp = Blueprint("settings", __name__, url_prefix="/settings")
@@ -282,3 +291,60 @@ def delete_position(id):
     db.session.commit()
     flash("Должность удалена", "success")
     return redirect(url_for("settings.positions"))
+
+
+@bp.route("/finance_distribution_rules")
+@login_required
+def finance_distribution_rules():
+    rules = FinanceDistributionRule.query.order_by(
+        FinanceDistributionRule.order, FinanceDistributionRule.name
+    ).all()
+    return render_template("settings/finance_distribution_rules.html", rules=rules)
+
+
+@bp.route("/finance_distribution_rules/add", methods=["POST"])
+@login_required
+def add_finance_distribution_rule():
+    name = request.form.get("name", "").strip()
+    percent = parse_decimal(request.form.get("percent", "0"))
+    order = request.form.get("order", type=int) or 0
+    active = bool(request.form.get("active"))
+    if name:
+        db.session.add(
+            FinanceDistributionRule(name=name, percent=percent, order=order, active=active)
+        )
+        db.session.commit()
+        flash("Правило распределения добавлено", "success")
+    else:
+        flash("Укажите название", "danger")
+    return redirect(url_for("settings.finance_distribution_rules"))
+
+
+@bp.route("/finance_distribution_rules/<int:id>/edit", methods=["POST"])
+@login_required
+def edit_finance_distribution_rule(id):
+    rule = db.session.get(FinanceDistributionRule, id) or abort(404)
+    name = request.form.get("name", "").strip()
+    percent = parse_decimal(request.form.get("percent", "0"))
+    order = request.form.get("order", type=int) or 0
+    active = bool(request.form.get("active"))
+    if name:
+        rule.name = name
+        rule.percent = percent
+        rule.order = order
+        rule.active = active
+        db.session.commit()
+        flash("Правило распределения обновлено", "success")
+    else:
+        flash("Укажите название", "danger")
+    return redirect(url_for("settings.finance_distribution_rules"))
+
+
+@bp.route("/finance_distribution_rules/<int:id>/delete", methods=["POST"])
+@login_required
+def delete_finance_distribution_rule(id):
+    rule = db.session.get(FinanceDistributionRule, id) or abort(404)
+    db.session.delete(rule)
+    db.session.commit()
+    flash("Правило распределения удалено", "success")
+    return redirect(url_for("settings.finance_distribution_rules"))

@@ -5,6 +5,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <h1 class="h3 mb-0">Финансовый учёт</h1>
   <div>
+    <a href="{{ url_for('finances.report') }}?date_from={{ request.args.get('date_from','') }}&date_to={{ request.args.get('date_to','') }}" class="btn btn-outline-primary me-1">{{ icon('graph-up') }} Отчёт</a>
     <a href="{{ url_for('finances.export') }}?date_from={{ request.args.get('date_from','') }}&date_to={{ request.args.get('date_to','') }}" class="btn btn-outline-success me-1">{{ icon('file-earmark-excel') }} Excel</a>
     <a href="{{ url_for('finances.add') }}" class="btn btn-success">{{ icon('plus-lg') }} Добавить</a>
   </div>
