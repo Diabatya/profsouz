@@ -6,5 +6,6 @@ Flask-Migrate==4.0.7
 Flask-WTF==1.2.1
 openpyxl==3.1.5
 Pillow
+python-pptx>=1.0.0
 pyinstaller>=6.10,<7.0
 pyinstaller-hooks-contrib>=2024.7

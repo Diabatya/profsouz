@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Соответствие полей PPTX{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Соответствие полей: {{ template.name }}</h1>
+  <a href="{{ url_for('awards.index') }}" class="btn btn-outline-secondary">К шаблонам</a>
+</div>
+
+<p class="text-muted">Выберите, какие текстовые блоки из PowerPoint заменять данными члена профсоюза. Остальные блоки останутся без изменений.</p>
+
+<form method="post" class="card">
+  <div class="card-body">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>№</th>
+          <th>Текст в PPTX</th>
+          <th>Поле для подстановки</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for shape in shapes %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td><code>{{ shape.text[:120] }}</code></td>
+          <td>
+            <select name="map_{{ shape.id }}" class="form-select">
+              <option value="">— не заменять —</option>
+              <option value="full_name" {% if current_map.get(shape.id) == 'full_name' %}selected{% endif %}>ФИО</option>
+              <option value="department" {% if current_map.get(shape.id) == 'department' %}selected{% endif %}>Цех/отдел</option>
+              <option value="position" {% if current_map.get(shape.id) == 'position' %}selected{% endif %}>Должность</option>
+              <option value="issued_at" {% if current_map.get(shape.id) == 'issued_at' %}selected{% endif %}>Дата вручения</option>
+              <option value="today" {% if current_map.get(shape.id) == 'today' %}selected{% endif %}>Сегодня</option>
+              <option value="note" {% if current_map.get(shape.id) == 'note' %}selected{% endif %}>Примечание</option>
+            </select>
+            <input type="hidden" name="shape_id" value="{{ shape.id }}">
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="text-center text-muted py-4">Не найдено текстовых блоков в PPTX</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit" class="btn btn-primary">{{ icon('floppy') }} Сохранить соответствие</button>
+  </div>
+</form>
+{% endblock %}

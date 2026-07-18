@@ -23,14 +23,17 @@
       </div>
       <div class="col-md-2"><input type="number" name="order" class="form-control" value="0" placeholder="Порядок"></div>
       <div class="col-md-2"><button type="submit" class="btn btn-success w-100">{{ icon('plus-lg') }}</button></div>
-      <div class="col-md-6">
+      <div class="col-md-3">
         <input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" class="form-control" title="Фон из PPTX (PNG)">
       </div>
+      <div class="col-md-3">
+        <input type="file" name="pptx" accept=".pptx" class="form-control" title="Шаблон PowerPoint">
+      </div>
       <div class="col-md-6">
-        <span class="text-muted small">Слайды из PowerPoint сохраните как PNG и загрузите сюда. В теле используйте: <code>{% raw %}{{ image_url }}{% endraw %}</code></span>
+        <span class="text-muted small">HTML: <code>{% raw %}{{ member.full_name }}, {{ issued_at|dt }}, {{ image_url }}{% endraw %}</code>. Или загрузите <strong>.pptx</strong> и укажите соответствие полей.</span>
       </div>
       <div class="col-12">
-        <textarea name="body" class="form-control" rows="8" placeholder="HTML тело. Переменные: {% raw %}{{ member.full_name }}, {{ member.department }}, {{ issued_at|dt }}, {{ today|dt }}, {{ image_url }}{% endraw %}" required></textarea>
+        <textarea name="body" class="form-control" rows="8" placeholder="HTML тело (или оставьте пустым, если используется PPTX)">{% raw %}{{ member.full_name }}{% endraw %}</textarea>
       </div>
     </form>
   </div>
@@ -60,16 +63,20 @@
             </div>
           </div>
           <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">{{ icon('floppy') }}</button></div>
-          <div class="col-md-6">
+          <div class="col-md-3">
             <input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" class="form-control">
-            {% if t.image_url %}<small class="text-muted">Текущий фон: <a href="{{ t.image_url }}" target="_blank">открыть</a></small>{% endif %}
+            {% if t.image_url %}<small class="text-muted">Фон: <a href="{{ t.image_url }}" target="_blank">открыть</a></small>{% endif %}
+          </div>
+          <div class="col-md-3">
+            <input type="file" name="pptx" accept=".pptx" class="form-control">
+            {% if t.pptx_url %}<small class="text-muted">PPTX: <a href="{{ t.pptx_url }}" target="_blank">скачать</a> · <a href="{{ url_for('awards.template_map', id=t.id) }}">поля</a></small>{% endif %}
           </div>
           <div class="col-md-6 text-end">
             <form method="post" action="{{ url_for('awards.delete_template', id=t.id) }}" class="d-inline delete-form">
               <button type="submit" class="btn btn-outline-danger btn-sm">{{ icon('trash') }} Удалить</button>
             </form>
           </div>
-          <div class="col-12"><textarea name="body" class="form-control" rows="6" required>{{ t.body }}</textarea></div>
+          <div class="col-12"><textarea name="body" class="form-control" rows="6">{{ t.body }}</textarea></div>
         </form>
       </div>
     </div>

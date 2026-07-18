@@ -364,8 +364,10 @@ class DocumentTemplate(db.Model):
     type = db.Column(db.String(30), nullable=False, default="award")
     name = db.Column(db.String(100), nullable=False)
     title = db.Column(db.String(200), nullable=False)
-    body = db.Column(db.Text, nullable=False)
+    body = db.Column(db.Text, nullable=False, default="")
     image_path = db.Column(db.String(300), nullable=True)
+    pptx_path = db.Column(db.String(300), nullable=True)
+    pptx_shape_map = db.Column(db.Text, nullable=True)
     order = db.Column(db.Integer, default=0)
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=db.func.now())
@@ -378,10 +380,34 @@ class DocumentTemplate(db.Model):
             return url_for("main.uploaded_file", filename=self.image_path)
         return None
 
+    @property
+    def pptx_url(self):
+        from flask import url_for
+
+        if self.pptx_path:
+            return url_for("main.uploaded_file", filename=self.pptx_path)
+        return None
+
+    @property
+    def shape_map(self):
+        import json
+
+        return json.loads(self.pptx_shape_map) if self.pptx_shape_map else {}
+
+    @shape_map.setter
+    def shape_map(self, value):
+        import json
+
+        self.pptx_shape_map = json.dumps(value, ensure_ascii=False)
+
+    @property
+    def is_pptx(self):
+        return bool(self.pptx_path)
+
     def render(self, context):
         from flask import current_app
 
-        return current_app.jinja_env.from_string(self.body).render(context)
+        return current_app.jinja_env.from_string(self.body or "").render(context)
 
 
 class MemberAward(db.Model):
