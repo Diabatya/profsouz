@@ -12,4 +12,4 @@ USERNAME = "admin"
 PASSWORD = "admin"
 DATABASE_URL = "sqlite:///" + os.path.join(BASE_DIR, "database.db")
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-PORT = 5000
+PORT = 8765

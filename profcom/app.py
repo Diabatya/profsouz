@@ -192,6 +192,6 @@ if _should_init_db():
 
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else app.config.get("PORT", 5000)
-    print(f"Сервер запущен. Откройте http://127.0.0.1:{port}")
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else app.config.get("PORT", 8765)
+    print(f"Сервер запущен. Откройте http://<ip-адрес>:{port} (локально http://127.0.0.1:{port})")
     app.run(host="0.0.0.0", port=port, debug=False)
