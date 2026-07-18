@@ -365,9 +365,18 @@ class DocumentTemplate(db.Model):
     name = db.Column(db.String(100), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     body = db.Column(db.Text, nullable=False)
+    image_path = db.Column(db.String(300), nullable=True)
     order = db.Column(db.Integer, default=0)
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=db.func.now())
+
+    @property
+    def image_url(self):
+        from flask import url_for
+
+        if self.image_path:
+            return url_for("main.uploaded_file", filename=self.image_path)
+        return None
 
     def render(self, context):
         from flask import current_app

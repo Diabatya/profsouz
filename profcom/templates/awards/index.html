@@ -10,7 +10,7 @@
 <div class="card mb-4">
   <div class="card-header">Добавить шаблон</div>
   <div class="card-body">
-    <form method="post" action="{{ url_for('awards.add_template') }}" class="row g-3">
+    <form method="post" action="{{ url_for('awards.add_template') }}" enctype="multipart/form-data" class="row g-3">
       <div class="col-md-3"><input type="text" name="name" class="form-control" placeholder="Название (для списка)" required></div>
       <div class="col-md-3"><input type="text" name="title" class="form-control" placeholder="Заголовок документа" required></div>
       <div class="col-md-2">
@@ -23,8 +23,14 @@
       </div>
       <div class="col-md-2"><input type="number" name="order" class="form-control" value="0" placeholder="Порядок"></div>
       <div class="col-md-2"><button type="submit" class="btn btn-success w-100">{{ icon('plus-lg') }}</button></div>
+      <div class="col-md-6">
+        <input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" class="form-control" title="Фон из PPTX (PNG)">
+      </div>
+      <div class="col-md-6">
+        <span class="text-muted small">Слайды из PowerPoint сохраните как PNG и загрузите сюда. В теле используйте: <code>{% raw %}{{ image_url }}{% endraw %}</code></span>
+      </div>
       <div class="col-12">
-        <textarea name="body" class="form-control" rows="6" placeholder="HTML тело. Переменные: {% raw %}{{ member.full_name }}, {{ member.department }}, {{ issued_at|dt }}, {{ today|dt }}{% endraw %}" required></textarea>
+        <textarea name="body" class="form-control" rows="8" placeholder="HTML тело. Переменные: {% raw %}{{ member.full_name }}, {{ member.department }}, {{ issued_at|dt }}, {{ today|dt }}, {{ image_url }}{% endraw %}" required></textarea>
       </div>
     </form>
   </div>
@@ -35,7 +41,7 @@
   <div class="col-12">
     <div class="card">
       <div class="card-body">
-        <form method="post" action="{{ url_for('awards.edit_template', id=t.id) }}" class="row g-3">
+        <form method="post" action="{{ url_for('awards.edit_template', id=t.id) }}" enctype="multipart/form-data" class="row g-3">
           <div class="col-md-3"><input type="text" name="name" class="form-control" value="{{ t.name }}" required></div>
           <div class="col-md-3"><input type="text" name="title" class="form-control" value="{{ t.title }}" required></div>
           <div class="col-md-2">
@@ -54,7 +60,16 @@
             </div>
           </div>
           <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">{{ icon('floppy') }}</button></div>
-          <div class="col-12"><textarea name="body" class="form-control" rows="4" required>{{ t.body }}</textarea></div>
+          <div class="col-md-6">
+            <input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" class="form-control">
+            {% if t.image_url %}<small class="text-muted">Текущий фон: <a href="{{ t.image_url }}" target="_blank">открыть</a></small>{% endif %}
+          </div>
+          <div class="col-md-6 text-end">
+            <form method="post" action="{{ url_for('awards.delete_template', id=t.id) }}" class="d-inline delete-form">
+              <button type="submit" class="btn btn-outline-danger btn-sm">{{ icon('trash') }} Удалить</button>
+            </form>
+          </div>
+          <div class="col-12"><textarea name="body" class="form-control" rows="6" required>{{ t.body }}</textarea></div>
         </form>
       </div>
     </div>

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from flask import Blueprint, render_template, request, url_for
+from flask import Blueprint, current_app, render_template, request, send_from_directory, url_for
 from sqlalchemy import func
 
 from models import Event, FinanceRecord, Group, Member, MemberStatusHistory, Payout, db
@@ -136,3 +136,9 @@ def timeline():
         )
     items.sort(key=lambda x: x["time"], reverse=True)
     return render_template("timeline.html", items=items[:50])
+
+
+@bp.route("/uploads/<path:filename>")
+@login_required
+def uploaded_file(filename):
+    return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)

@@ -1,6 +1,9 @@
+import os
+import uuid
 from datetime import date
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
+from werkzeug.utils import secure_filename
 
 from models import DocumentTemplate, Member, MemberAward, db
 from utils import login_required, parse_date
@@ -8,12 +11,27 @@ from utils import login_required, parse_date
 bp = Blueprint("awards", __name__, url_prefix="/awards")
 
 
-def _get_context(member, issued_at=None):
+def _get_context(template, member, issued_at=None):
     return {
         "member": member,
         "today": date.today(),
         "issued_at": issued_at or date.today(),
+        "template": template,
+        "image_url": template.image_url,
     }
+
+
+def _save_template_image(file):
+    if not file or not file.filename:
+        return None
+    ext = os.path.splitext(secure_filename(file.filename).lower())[1]
+    if ext not in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
+        return None
+    upload_dir = os.path.join(current_app.config["UPLOAD_FOLDER"], "templates")
+    os.makedirs(upload_dir, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}{ext}"
+    file.save(os.path.join(upload_dir, filename))
+    return os.path.join("templates", filename).replace("\\", "/")
 
 
 @bp.route("/")
@@ -30,6 +48,7 @@ def add_template():
     name = (request.form.get("name") or "").strip()
     title = (request.form.get("title") or "").strip()
     body = (request.form.get("body") or "").strip()
+    image_path = _save_template_image(request.files.get("image"))
     if name and title and body:
         db.session.add(
             DocumentTemplate(
@@ -37,6 +56,7 @@ def add_template():
                 type=request.form.get("type", "award"),
                 title=title,
                 body=body,
+                image_path=image_path,
                 order=request.form.get("order", type=int) or 0,
             )
         )
@@ -57,8 +77,17 @@ def edit_template(id):
     template.type = request.form.get("type", "award")
     template.order = request.form.get("order", type=int) or 0
     template.active = bool(request.form.get("active"))
+    old_image_path = template.image_path
+    new_image_path = _save_template_image(request.files.get("image"))
+    if new_image_path:
+        template.image_path = new_image_path
     if template.name and template.title and template.body:
         db.session.commit()
+        if new_image_path and old_image_path:
+            try:
+                os.remove(os.path.join(current_app.config["UPLOAD_FOLDER"], old_image_path))
+            except OSError:
+                pass
         flash("Шаблон обновлен", "success")
     else:
         flash("Заполните все поля", "danger")
@@ -69,8 +98,14 @@ def edit_template(id):
 @login_required
 def delete_template(id):
     template = db.session.get(DocumentTemplate, id) or abort(404)
+    image_path = template.image_path
     db.session.delete(template)
     db.session.commit()
+    if image_path:
+        try:
+            os.remove(os.path.join(current_app.config["UPLOAD_FOLDER"], image_path))
+        except OSError:
+            pass
     flash("Шаблон удален", "success")
     return redirect(url_for("awards.index"))
 
@@ -120,7 +155,7 @@ def print_preview():
             .first()
         )
         issued_at = award.issued_at if award else date.today()
-        pages.append(template.render(_get_context(member, issued_at)))
+        pages.append(template.render(_get_context(template, member, issued_at)))
     return render_template("awards/print.html", template=template, pages=pages, members=members)
 
 
