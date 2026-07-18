@@ -18,7 +18,7 @@ from flask import (
 )
 from openpyxl import load_workbook
 
-from models import Group, Member, MemberStatusHistory, db
+from models import Group, Member, MemberStatusHistory, Position, db
 from utils import (
     apply_sort,
     dictionary_values,
@@ -144,6 +144,7 @@ def add():
     from forms import MemberForm
 
     form = MemberForm()
+    form.organization_position_id.choices = _position_choices()
     if form.validate_on_submit():
         full_name = title_name(form.full_name.data)
         department = (
@@ -152,6 +153,7 @@ def add():
         )
         position = (form.position.data or "").strip() or None
         position = save_dictionary_value("position", position) or position
+        organization_position_id = form.organization_position_id.data or None
         gender = form.gender.data
         birth_date = parse_date(form.birth_date.data)
         entry_date = parse_date(form.entry_date.data)
@@ -169,6 +171,7 @@ def add():
             full_name=full_name,
             department=department,
             position=position,
+            organization_position_id=organization_position_id,
             birth_date=birth_date,
             entry_date=entry_date,
             status="active",
@@ -196,6 +199,15 @@ def add():
         department_choices=dictionary_values("department"),
         position_choices=dictionary_values("position"),
     )
+
+
+def _position_choices():
+    positions = (
+        Position.query.filter_by(active=True, scope="organization")
+        .order_by(Position.level, Position.name)
+        .all()
+    )
+    return [(0, "-")] + [(p.id, f"{p.name} (ур. {p.level})") for p in positions]
 
 
 def _normalize_full_name(name):
@@ -397,6 +409,9 @@ def edit(id):
 
     member = db.session.get(Member, id) or abort(404)
     form = MemberForm(obj=member)
+    form.organization_position_id.choices = _position_choices()
+    if member.organization_position_id:
+        form.organization_position_id.data = member.organization_position_id
     if form.validate_on_submit():
         full_name = title_name(form.full_name.data)
         department = (
@@ -405,6 +420,7 @@ def edit(id):
         )
         position = (form.position.data or "").strip() or None
         position = save_dictionary_value("position", position) or position
+        organization_position_id = form.organization_position_id.data or None
         gender = form.gender.data
         birth_date = parse_date(form.birth_date.data)
         entry_date = parse_date(form.entry_date.data)
@@ -422,6 +438,7 @@ def edit(id):
         member.full_name = full_name
         member.department = department
         member.position = position
+        member.organization_position_id = organization_position_id
         member.birth_date = birth_date
         member.entry_date = entry_date
         if gender in ("male", "female"):

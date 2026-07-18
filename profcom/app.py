@@ -158,7 +158,19 @@ def init_db():
         seed_data()
 
 
-if os.environ.get("PROFCOM_SKIP_INIT") != "1":
+def _should_init_db():
+    if os.environ.get("PROFCOM_SKIP_INIT") == "1":
+        return False
+    # skip auto-init for flask migration CLI to prevent conflicts
+    args = [a.lower() for a in sys.argv]
+    if "db" in args and (
+        "flask" in args or os.path.basename(sys.argv[0]).lower() in ("flask", "flask.exe")
+    ):
+        return False
+    return True
+
+
+if _should_init_db():
     init_db()
 
 

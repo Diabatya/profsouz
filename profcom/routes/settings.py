@@ -4,7 +4,7 @@ import shutil
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
 import config
-from models import Admin, AnniversarySetting, Dictionary, PayoutCategory, PayoutType, db
+from models import Admin, AnniversarySetting, Dictionary, PayoutCategory, PayoutType, Position, db
 from utils import login_required, parse_decimal
 
 bp = Blueprint("settings", __name__, url_prefix="/settings")
@@ -230,3 +230,55 @@ def delete_payout_category(id):
     db.session.commit()
     flash("Категория выплат удалена", "success")
     return redirect(url_for("settings.payout_categories"))
+
+
+@bp.route("/positions")
+@login_required
+def positions():
+    positions = (
+        Position.query.filter_by(scope="organization").order_by(Position.level, Position.name).all()
+    )
+    return render_template("settings/positions.html", positions=positions)
+
+
+@bp.route("/positions/add", methods=["POST"])
+@login_required
+def add_position():
+    name = request.form.get("name", "").strip()
+    level = request.form.get("level", type=int) or 0
+    active = bool(request.form.get("active"))
+    if name:
+        db.session.add(Position(name=name, scope="organization", level=level, active=active))
+        db.session.commit()
+        flash("Должность добавлена", "success")
+    else:
+        flash("Укажите название должности", "danger")
+    return redirect(url_for("settings.positions"))
+
+
+@bp.route("/positions/<int:id>/edit", methods=["POST"])
+@login_required
+def edit_position(id):
+    pos = db.session.get(Position, id) or abort(404)
+    name = request.form.get("name", "").strip()
+    level = request.form.get("level", type=int) or 0
+    active = bool(request.form.get("active"))
+    if name:
+        pos.name = name
+        pos.level = level
+        pos.active = active
+        db.session.commit()
+        flash("Должность обновлена", "success")
+    else:
+        flash("Укажите название должности", "danger")
+    return redirect(url_for("settings.positions"))
+
+
+@bp.route("/positions/<int:id>/delete", methods=["POST"])
+@login_required
+def delete_position(id):
+    pos = db.session.get(Position, id) or abort(404)
+    db.session.delete(pos)
+    db.session.commit()
+    flash("Должность удалена", "success")
+    return redirect(url_for("settings.positions"))

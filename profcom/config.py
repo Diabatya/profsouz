@@ -1,7 +1,11 @@
 import os
 import sys
 
-BASE_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
+if getattr(sys, "frozen", False):
+    # PyInstaller bundle: keep data next to the executable
+    BASE_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "profcom-local-secret-key-2026")
 USERNAME = "admin"

@@ -12,7 +12,12 @@ class MemberForm(FlaskForm):
         filters=[title_name],
     )
     department = StringField("Отдел", validators=[DataRequired()])
-    position = StringField("Должность", validators=[Optional()])
+    position = StringField("Должность в профсоюзе", validators=[Optional()])
+    organization_position_id = SelectField(
+        "Должность в организации",
+        coerce=int,
+        validators=[Optional()],
+    )
     gender = SelectField(
         "Пол",
         choices=[

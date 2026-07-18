@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Должности в организации{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Должности в организации</h1>
+  <a href="{{ url_for('settings.index') }}" class="btn btn-outline-secondary">Назад к настройкам</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Добавить должность</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('settings.add_position') }}" class="row g-2 align-items-end">
+      <div class="col-md-5"><input type="text" name="name" class="form-control" placeholder="Название должности" required></div>
+      <div class="col-md-2"><input type="number" name="level" class="form-control" placeholder="Уровень" value="0"></div>
+      <div class="col-md-3">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="active" id="active" value="1" checked>
+          <label class="form-check-label" for="active">Активна</label>
+        </div>
+      </div>
+      <div class="col-md-2"><button type="submit" class="btn btn-success w-100">{{ icon('plus-lg') }}</button></div>
+    </form>
+    <div class="form-text text-muted">Меньше уровень — выше в иерархии (например, директор = 1, зам. = 2, начальник = 3).</div>
+  </div>
+</div>
+
+<div class="row g-4">
+  {% for pos in positions %}
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-body">
+        <form method="post" action="{{ url_for('settings.edit_position', id=pos.id) }}" class="row g-2 align-items-end">
+          <div class="col-md-5"><input type="text" name="name" class="form-control" value="{{ pos.name }}" required></div>
+          <div class="col-md-2"><input type="number" name="level" class="form-control" value="{{ pos.level }}"></div>
+          <div class="col-md-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="active" id="active_{{ pos.id }}" value="1" {% if pos.active %}checked{% endif %}>
+              <label class="form-check-label" for="active_{{ pos.id }}">Активна</label>
+            </div>
+          </div>
+          <div class="col-md-1"><button type="submit" class="btn btn-primary w-100">{{ icon('floppy') }}</button></div>
+          <div class="col-md-1">
+            <form method="post" action="{{ url_for('settings.delete_position', id=pos.id) }}" class="delete-form">
+              <button type="submit" class="btn btn-outline-danger w-100">{{ icon('trash') }}</button>
+            </form>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12 text-muted">Нет должностей</div>
+  {% endfor %}
+</div>
+{% endblock %}

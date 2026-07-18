@@ -40,13 +40,17 @@
           <div class="form-text">При выборе «Авто» определится по отчеству</div>
         </div>
         <div class="col-md-6">
-          <label class="form-label">Должность</label>
+          <label class="form-label">Должность в профсоюзе</label>
           <input type="text" name="position" class="form-control" list="positions" value="{{ form.position.data or '' }}" placeholder="например, Председатель">
           <datalist id="positions">
             {% for value in position_choices %}
             <option value="{{ value }}">
             {% endfor %}
           </datalist>
+        </div>
+        <div class="col-md-6">
+          {{ form.organization_position_id.label(class="form-label") }}
+          {{ form.organization_position_id(class="form-select") }}
         </div>
         <div class="col-md-6">
           <label class="form-label">Дата рождения</label>

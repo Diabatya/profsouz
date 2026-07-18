@@ -27,12 +27,16 @@ class Member(db.Model):
     birth_date = db.Column(db.Date, nullable=False)
     department = db.Column(db.String(100), nullable=False)
     position = db.Column(db.String(100), nullable=True)
+    organization_position_id = db.Column(db.Integer, db.ForeignKey("position.id"), nullable=True)
     photo_path = db.Column(db.String(255), nullable=True)
     gender = db.Column(db.String(10), nullable=True)
     entry_date = db.Column(db.Date, nullable=False)
     status = db.Column(db.String(20), default="active")
 
     groups = db.relationship("Group", secondary="member_group", back_populates="members")
+    organization_position = db.relationship(
+        "Position", foreign_keys=[organization_position_id], backref="organization_members"
+    )
     payouts = db.relationship(
         "Payout", backref="member", lazy="dynamic", cascade="all, delete-orphan"
     )
@@ -140,6 +144,15 @@ class Group(db.Model):
     name = db.Column(db.String(100), nullable=False)
     type = db.Column(db.String(20), default="other")
     members = db.relationship("Member", secondary=member_group, back_populates="groups")
+
+
+class Position(db.Model):
+    __tablename__ = "position"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    scope = db.Column(db.String(20), nullable=False, default="organization")
+    level = db.Column(db.Integer, default=0)
+    active = db.Column(db.Boolean, default=True)
 
 
 class PayoutType(db.Model):
