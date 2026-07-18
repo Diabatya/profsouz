@@ -46,9 +46,11 @@
 
   {% macro member_badges(member) -%}
     {% set today = today() %}
+    {% if member.entry_date %}
     {% set union_years = ((today - member.entry_date).days // 365) %}
     {% if union_years >= 5 and union_years % 5 == 0 %}
     <span class="badge bg-warning text-dark me-1" data-bs-toggle="tooltip" title="{{ union_years }} лет непрерывного стажа в профсоюзе">{{ union_years }} лет в профсоюзе</span>
+    {% endif %}
     {% endif %}
     {% if member.birth_date %}
       {% set by = member.birth_date.replace(year=today.year) %}
@@ -120,8 +122,14 @@
           <li class="nav-item">
             <a class="nav-link {% if request.endpoint and request.endpoint.startswith('main.') %}active{% endif %}" href="{{ url_for('main.dashboard') }}">{{ icon('house') }} Главная</a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('members.') %}active{% endif %}" href="{{ url_for('members.index') }}">{{ icon('people') }} Члены</a>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle {% if request.endpoint and request.endpoint.startswith('members.') %}active{% endif %}" href="#" id="membersDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">{{ icon('people') }} Члены</a>
+            <ul class="dropdown-menu" aria-labelledby="membersDropdown">
+              <li><a class="dropdown-item" href="{{ url_for('members.index') }}">Список членов</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('members.gifts') }}">Списки подарков</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('members.profkom') }}">Профком</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('members.committees') }}">Комитеты</a></li>
+            </ul>
           </li>
           <li class="nav-item">
             <a class="nav-link {% if request.endpoint and request.endpoint == 'members.profkom' %}active{% endif %}" href="{{ url_for('members.profkom') }}">{{ icon('building') }} Профком</a>
@@ -140,6 +148,9 @@
           </li>
           <li class="nav-item">
             <a class="nav-link {% if request.endpoint and request.endpoint.startswith('finances.') %}active{% endif %}" href="{{ url_for('finances.index') }}">{{ icon('wallet') }} Финансы</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('inventory.') %}active{% endif %}" href="{{ url_for('inventory.index') }}">{{ icon('box-seam') }} Инвентарь</a>
           </li>
           <li class="nav-item">
             <a class="nav-link {% if request.endpoint and request.endpoint.startswith('birthdays.') %}active{% endif %}" href="{{ url_for('birthdays.index') }}">{{ icon('gift') }} Именинники</a>

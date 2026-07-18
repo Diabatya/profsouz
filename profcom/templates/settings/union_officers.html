@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Ответственные лица профкома{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Ответственные лица профкома</h1>
+  <a href="{{ url_for('settings.index') }}" class="btn btn-outline-secondary">Назад к настройкам</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Добавить ответственное лицо</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('settings.add_union_officer') }}" class="row g-2 align-items-end">
+      <div class="col-md-3"><input type="text" name="role" class="form-control" placeholder="Роль (председатель, секретарь...)" required></div>
+      <div class="col-md-5">
+        <select name="member_id" class="form-select" required>
+          <option value="">Выберите члена профсоюза</option>
+          {% for m in members %}<option value="{{ m.id }}">{{ m.full_name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2"><input type="number" name="order" class="form-control" placeholder="Порядок" value="0"></div>
+      <div class="col-md-2"><button type="submit" class="btn btn-success w-100">{{ icon('plus-lg') }}</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="row g-4">
+  {% for o in officers %}
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-body">
+        <form method="post" action="{{ url_for('settings.edit_union_officer', id=o.id) }}" class="row g-2 align-items-end">
+          <div class="col-md-3"><input type="text" name="role" class="form-control" value="{{ o.role }}" required></div>
+          <div class="col-md-5">
+            <select name="member_id" class="form-select" required>
+              {% for m in members %}<option value="{{ m.id }}" {% if o.member_id == m.id %}selected{% endif %}>{{ m.full_name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2"><input type="number" name="order" class="form-control" value="{{ o.order }}"></div>
+          <div class="col-md-1"><button type="submit" class="btn btn-primary w-100">{{ icon('floppy') }}</button></div>
+          <div class="col-md-1">
+            <form method="post" action="{{ url_for('settings.delete_union_officer', id=o.id) }}" class="delete-form">
+              <button type="submit" class="btn btn-outline-danger w-100">{{ icon('trash') }}</button>
+            </form>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12 text-muted">Нет ответственных лиц</div>
+  {% endfor %}
+</div>
+{% endblock %}

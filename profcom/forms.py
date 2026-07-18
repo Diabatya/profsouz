@@ -13,6 +13,7 @@ class MemberForm(FlaskForm):
     )
     department = StringField("Отдел", validators=[DataRequired()])
     position = StringField("Должность в профсоюзе", validators=[Optional()])
+    phone = StringField("Телефон", validators=[Optional()])
     organization_position_id = SelectField(
         "Должность в организации",
         coerce=int,
@@ -27,7 +28,7 @@ class MemberForm(FlaskForm):
         ],
     )
     birth_date = StringField("Дата рождения", validators=[DataRequired()])
-    entry_date = StringField("Дата вступления", validators=[DataRequired()])
+    entry_date = StringField("Дата вступления", validators=[Optional()])
     photo = FileField("Фото профиля", validators=[Optional()])
 
 

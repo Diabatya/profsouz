@@ -9,9 +9,11 @@ from models import (
     AnniversarySetting,
     Dictionary,
     FinanceDistributionRule,
+    Member,
     PayoutCategory,
     PayoutType,
     Position,
+    UnionOfficer,
     db,
 )
 from utils import login_required, parse_decimal
@@ -348,3 +350,61 @@ def delete_finance_distribution_rule(id):
     db.session.commit()
     flash("Правило распределения удалено", "success")
     return redirect(url_for("settings.finance_distribution_rules"))
+
+
+@bp.route("/union_officers")
+@login_required
+def union_officers():
+    officers = (
+        UnionOfficer.query.filter_by(active=True)
+        .order_by(UnionOfficer.order, UnionOfficer.role)
+        .all()
+    )
+    members = Member.query.filter_by(status="active").order_by(Member.full_name).all()
+    return render_template("settings/union_officers.html", officers=officers, members=members)
+
+
+@bp.route("/union_officers/add", methods=["POST"])
+@login_required
+def add_union_officer():
+    role = (request.form.get("role") or "").strip()
+    member_id = request.form.get("member_id", type=int)
+    order = request.form.get("order", type=int) or 0
+    active = bool(request.form.get("active"))
+    if role and member_id:
+        db.session.add(UnionOfficer(role=role, member_id=member_id, order=order, active=active))
+        db.session.commit()
+        flash("Ответственное лицо добавлено", "success")
+    else:
+        flash("Укажите роль и члена профсоюза", "danger")
+    return redirect(url_for("settings.union_officers"))
+
+
+@bp.route("/union_officers/<int:id>/edit", methods=["POST"])
+@login_required
+def edit_union_officer(id):
+    officer = db.session.get(UnionOfficer, id) or abort(404)
+    role = (request.form.get("role") or "").strip()
+    member_id = request.form.get("member_id", type=int)
+    order = request.form.get("order", type=int) or 0
+    active = bool(request.form.get("active"))
+    if role and member_id:
+        officer.role = role
+        officer.member_id = member_id
+        officer.order = order
+        officer.active = active
+        db.session.commit()
+        flash("Ответственное лицо обновлено", "success")
+    else:
+        flash("Укажите роль и члена профсоюза", "danger")
+    return redirect(url_for("settings.union_officers"))
+
+
+@bp.route("/union_officers/<int:id>/delete", methods=["POST"])
+@login_required
+def delete_union_officer(id):
+    officer = db.session.get(UnionOfficer, id) or abort(404)
+    db.session.delete(officer)
+    db.session.commit()
+    flash("Ответственное лицо удалено", "success")
+    return redirect(url_for("settings.union_officers"))

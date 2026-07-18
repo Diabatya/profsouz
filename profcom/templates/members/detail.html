@@ -33,9 +33,10 @@
         <p><strong>ФИО:</strong> {{ member.full_name }}</p>
         <p><strong>Пол:</strong> {{ member.gender_display }}</p>
         <p><strong>Отдел:</strong> {{ member.department }}</p>
+        <p><strong>Телефон:</strong> <span class="member-phone">{{ member.phone|mask_phone }}</span> <a href="#" class="text-decoration-none small" onclick="this.previousElementSibling.textContent='{{ member.phone or '-' }}'; return false;">показать</a></p>
         <p><strong>Должность:</strong> {{ member.position or '-' }}</p>
         <p><strong>Дата рождения:</strong> {{ member.birth_date|dt }}</p>
-        <p><strong>Дата вступления:</strong> {{ member.entry_date|dt }}</p>
+        <p><strong>Дата вступления:</strong> {{ member.entry_date|dt if member.entry_date else '-' }}</p>
         <p><strong>Статус:</strong>
           {% if member.status == 'active' %}
           <span class="badge bg-success">Активен</span>
@@ -46,7 +47,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card mb-4">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span>Группы</span>
         <a href="{{ url_for('members.groups') }}" class="btn btn-sm btn-outline-primary">Управление группами</a>
@@ -64,6 +65,38 @@
         {% else %}
         <p class="text-muted mb-0">Не состоит в группах</p>
         {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Дети</div>
+      <div class="card-body">
+        {% if member.children %}
+        <ul class="list-group list-group-flush mb-3">
+          {% for child in member.children %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>{{ child.full_name }} {% if child.birth_date %}({{ child.birth_date|dt }}){% endif %} {% if child.gender == 'male' %}<span class="badge bg-info text-dark">М</span>{% elif child.gender == 'female' %}<span class="badge bg-warning text-dark">Ж</span>{% endif %}</span>
+            <form method="post" action="{{ url_for('members.delete_child', child_id=child.id) }}" class="d-inline delete-form">
+              <button type="submit" class="btn btn-sm btn-outline-danger">{{ icon('trash') }}</button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted mb-0">Детей не добавлено</p>
+        {% endif %}
+        <form method="post" action="{{ url_for('members.add_child', member_id=member.id) }}" class="row g-2 align-items-end">
+          <div class="col-md-5"><input type="text" name="full_name" class="form-control" placeholder="ФИО ребенка" required></div>
+          <div class="col-md-3"><input type="date" name="birth_date" class="form-control"></div>
+          <div class="col-md-2">
+            <select name="gender" class="form-select">
+              <option value="">Пол</option>
+              <option value="male">М</option>
+              <option value="female">Ж</option>
+            </select>
+          </div>
+          <div class="col-md-2"><button type="submit" class="btn btn-success w-100">{{ icon('plus-lg') }}</button></div>
+        </form>
       </div>
     </div>
   </div>

@@ -29,8 +29,9 @@ class Member(db.Model):
     position = db.Column(db.String(100), nullable=True)
     organization_position_id = db.Column(db.Integer, db.ForeignKey("position.id"), nullable=True)
     photo_path = db.Column(db.String(255), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
     gender = db.Column(db.String(10), nullable=True)
-    entry_date = db.Column(db.Date, nullable=False)
+    entry_date = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(20), default="active")
 
     groups = db.relationship("Group", secondary="member_group", back_populates="members")
@@ -136,6 +137,17 @@ member_group = db.Table(
     db.Column("member_id", db.Integer, db.ForeignKey("member.id"), primary_key=True),
     db.Column("group_id", db.Integer, db.ForeignKey("groups.id"), primary_key=True),
 )
+
+
+class MemberChild(db.Model):
+    __tablename__ = "member_child"
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
+    full_name = db.Column(db.String(200), nullable=False)
+    birth_date = db.Column(db.Date, nullable=True)
+    gender = db.Column(db.String(10), nullable=True)
+
+    member = db.relationship("Member", backref="children")
 
 
 class Group(db.Model):
@@ -292,3 +304,45 @@ class FinanceRecordDistribution(db.Model):
     amount = db.Column(db.Numeric(12, 2), nullable=False)
 
     rule = db.relationship("FinanceDistributionRule")
+
+
+class InventoryItem(db.Model):
+    __tablename__ = "inventory_item"
+    id = db.Column(db.Integer, primary_key=True)
+    inventory_number = db.Column(db.String(50), nullable=False, unique=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.String(500), nullable=True)
+    quantity = db.Column(db.Numeric(10, 2), default=1)
+    unit = db.Column(db.String(20), default="шт.")
+    acquisition_date = db.Column(db.Date, nullable=True)
+    storage_term_years = db.Column(db.Integer, default=0)
+    location = db.Column(db.String(200), nullable=True)
+    responsible_member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=True)
+    status = db.Column(db.String(20), default="active")
+    file_path = db.Column(db.String(300), nullable=True)
+
+    responsible = db.relationship("Member", backref="inventory_items")
+
+    @property
+    def storage_until(self):
+        from datetime import timedelta
+
+        if self.acquisition_date and self.storage_term_years:
+            try:
+                return self.acquisition_date.replace(
+                    year=self.acquisition_date.year + self.storage_term_years
+                )
+            except ValueError:
+                return self.acquisition_date + timedelta(days=365 * self.storage_term_years)
+        return None
+
+
+class UnionOfficer(db.Model):
+    __tablename__ = "union_officer"
+    id = db.Column(db.Integer, primary_key=True)
+    role = db.Column(db.String(50), nullable=False)
+    member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
+    order = db.Column(db.Integer, default=0)
+    active = db.Column(db.Boolean, default=True)
+
+    member = db.relationship("Member", backref="officer_roles")

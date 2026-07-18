@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-from datetime import date
+from datetime import date, timedelta
 
 from flask import Flask, g, redirect, session, url_for
 from flask_migrate import Migrate
@@ -29,9 +29,26 @@ app.config["SQLALCHEMY_DATABASE_URI"] = (
     or "sqlite:///" + os.path.join(base_dir, "database.db")
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 
 db.init_app(app)
 migrate = Migrate(app, db, directory=resource_path("migrations"))
+
+
+@app.template_filter("mask_phone")
+def _mask_phone(value):
+    if not value:
+        return "-"
+    s = str(value)
+    if len(s) <= 4:
+        return s
+    return s[:2] + "*" * (len(s) - 4) + s[-2:]
+
+
+@app.template_filter("iso_date")
+def _iso_date(value):
+    return value.isoformat() if value else ""
+
 
 log_path = os.path.join(base_dir, "app.log")
 file_handler = logging.FileHandler(log_path, encoding="utf-8")

@@ -139,7 +139,7 @@
           <td>{{ m.department }}</td>
           <td>{{ m.position or '-' }}</td>
           <td>{{ m.birth_date|dt }}</td>
-          <td>{{ m.entry_date|dt }}</td>
+          <td>{{ m.entry_date|dt if m.entry_date else '-' }}</td>
           <td>
             {% if m.status == 'active' %}
             <span class="badge bg-success">Активен</span>
@@ -187,7 +187,7 @@
             </div>
             <p class="card-text mb-1"><span class="text-muted">Должность:</span> {{ m.position or '-' }}</p>
             <p class="card-text mb-1"><span class="text-muted">Дата рожд.:</span> {{ m.birth_date|dt }}</p>
-            <p class="card-text mb-2"><span class="text-muted">Вступил:</span> {{ m.entry_date|dt }}</p>
+            <p class="card-text mb-2"><span class="text-muted">Вступил:</span> {{ m.entry_date|dt if m.entry_date else '-' }}</p>
             {% if m.status == 'active' %}
             <span class="badge bg-success">Активен</span>
             {% else %}

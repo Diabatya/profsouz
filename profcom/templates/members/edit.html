@@ -64,12 +64,16 @@
           {{ form.organization_position_id(class="form-select") }}
         </div>
         <div class="col-md-6">
+          <label class="form-label">Телефон</label>
+          <input type="text" name="phone" class="form-control" value="{{ form.phone.data or '' }}" placeholder="+7 ...">
+        </div>
+        <div class="col-md-6">
           <label class="form-label">Дата рождения</label>
           <input type="date" name="birth_date" class="form-control" value="{{ form.birth_date.data or '' }}" required>
         </div>
         <div class="col-md-6">
           <label class="form-label">Дата вступления</label>
-          <input type="date" name="entry_date" class="form-control" value="{{ form.entry_date.data or '' }}" required>
+          <input type="date" name="entry_date" class="form-control" value="{{ form.entry_date.data or '' }}">
         </div>
       </div>
       <div class="mt-4">

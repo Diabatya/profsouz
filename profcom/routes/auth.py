@@ -31,6 +31,7 @@ def login():
             return render_template("login.html")
         admin = Admin.query.filter_by(username=username).first()
         if admin and admin.check_password(password):
+            session.permanent = True
             session["admin_id"] = admin.id
             _login_attempts.pop(ip, None)
             return redirect(url_for("main.dashboard"))

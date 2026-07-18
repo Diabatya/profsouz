@@ -18,7 +18,7 @@ from flask import (
 )
 from openpyxl import load_workbook
 
-from models import Group, Member, MemberStatusHistory, Position, db
+from models import Group, Member, MemberChild, MemberStatusHistory, Position, db
 from utils import (
     apply_sort,
     dictionary_values,
@@ -154,12 +154,13 @@ def add():
         position = (form.position.data or "").strip() or None
         position = save_dictionary_value("position", position) or position
         organization_position_id = form.organization_position_id.data or None
+        phone = (form.phone.data or "").strip() or None
         gender = form.gender.data
         birth_date = parse_date(form.birth_date.data)
         entry_date = parse_date(form.entry_date.data)
 
-        if not birth_date or not entry_date:
-            flash("Неверный формат даты", "danger")
+        if not birth_date:
+            flash("Укажите дату рождения", "danger")
             return render_template(
                 "members/add.html",
                 form=form,
@@ -172,6 +173,7 @@ def add():
             department=department,
             position=position,
             organization_position_id=organization_position_id,
+            phone=phone,
             birth_date=birth_date,
             entry_date=entry_date,
             status="active",
@@ -267,11 +269,9 @@ def import_members():
             if h in mapping:
                 col_map[mapping[h]] = i
 
-        required = ["full_name", "department", "birth_date", "entry_date"]
+        required = ["full_name", "department", "birth_date"]
         if not all(k in col_map for k in required):
-            flash(
-                "В файле должны быть колонки: ФИО, Отдел, Дата рождения, Дата вступления", "danger"
-            )
+            flash("В файле должны быть колонки: ФИО, Отдел, Дата рождения", "danger")
             return redirect(url_for("members.import_members"))
 
         # загружаем текущих членов для поиска дубликатов (с нормализацией)
@@ -300,9 +300,6 @@ def import_members():
                 entry_date = _parse_date_value(row[col_map["entry_date"]])
                 if not birth_date:
                     errors.append(f"Строка {row_idx}: неверная дата рождения")
-                    continue
-                if not entry_date:
-                    errors.append(f"Строка {row_idx}: неверная дата вступления")
                     continue
                 position = None
                 if "position" in col_map and row[col_map["position"]]:
@@ -421,12 +418,13 @@ def edit(id):
         position = (form.position.data or "").strip() or None
         position = save_dictionary_value("position", position) or position
         organization_position_id = form.organization_position_id.data or None
+        phone = (form.phone.data or "").strip() or None
         gender = form.gender.data
         birth_date = parse_date(form.birth_date.data)
         entry_date = parse_date(form.entry_date.data)
 
-        if not birth_date or not entry_date:
-            flash("Неверный формат даты", "danger")
+        if not birth_date:
+            flash("Укажите дату рождения", "danger")
             return render_template(
                 "members/edit.html",
                 member=member,
@@ -439,6 +437,7 @@ def edit(id):
         member.department = department
         member.position = position
         member.organization_position_id = organization_position_id
+        member.phone = phone
         member.birth_date = birth_date
         member.entry_date = entry_date
         if gender in ("male", "female"):
@@ -566,6 +565,104 @@ def profkom():
         groups=groups,
         members_by_group=members_by_group,
         selected_gender=gender,
+    )
+
+
+@bp.route("/<int:member_id>/children/add", methods=["POST"])
+@login_required
+def add_child(member_id):
+    member = db.session.get(Member, member_id) or abort(404)
+    full_name = title_name((request.form.get("full_name") or "").strip())
+    birth_date = parse_date(request.form.get("birth_date"))
+    gender = request.form.get("gender", "").strip()
+    if not full_name:
+        flash("Укажите ФИО ребенка", "danger")
+        return redirect(url_for("members.detail", id=member.id))
+    child = MemberChild(
+        member_id=member.id,
+        full_name=full_name,
+        birth_date=birth_date,
+        gender=gender if gender in ("male", "female") else None,
+    )
+    db.session.add(child)
+    db.session.commit()
+    flash("Ребенок добавлен", "success")
+    return redirect(url_for("members.detail", id=member.id))
+
+
+@bp.route("/children/<int:child_id>/delete", methods=["POST"])
+@login_required
+def delete_child(child_id):
+    child = db.session.get(MemberChild, child_id) or abort(404)
+    member_id = child.member_id
+    db.session.delete(child)
+    db.session.commit()
+    flash("Запись удалена", "success")
+    return redirect(url_for("members.detail", id=member_id))
+
+
+@bp.route("/gifts")
+@login_required
+def gifts():
+    department = request.args.get("department", "").strip()
+    position = request.args.get("position", "").strip()
+    max_age = request.args.get("max_age", type=int)
+    export = request.args.get("export", "")
+
+    q = Member.query.filter_by(status="active")
+    if department:
+        q = q.filter(Member.department == department)
+    if position:
+        q = q.filter(Member.position == position)
+    members = q.order_by(Member.full_name).all()
+    today = date.today()
+    result = []
+    for m in members:
+        children = []
+        for child in m.children:
+            age = None
+            if child.birth_date:
+                age = (
+                    today.year
+                    - child.birth_date.year
+                    - ((today.month, today.day) < (child.birth_date.month, child.birth_date.day))
+                )
+            if max_age is None or (age is not None and age <= max_age):
+                children.append({"child": child, "age": age})
+        total_gifts = 1 + len(children)
+        result.append({"member": m, "children": children, "total": total_gifts})
+
+    if export:
+        from utils import excel_response
+
+        rows = []
+        for r in result:
+            child_info = ", ".join(
+                f"{c['child'].full_name} ({c['age']})"
+                for c in r["children"]
+                if c["age"] is not None
+            )
+            rows.append(
+                [
+                    r["member"].full_name,
+                    r["member"].department,
+                    r["member"].position or "-",
+                    len(r["children"]),
+                    r["total"],
+                    child_info,
+                ]
+            )
+        headers = ["ФИО", "Отдел", "Должность", "Детей", "Всего подарков", "Дети (возраст)"]
+        return excel_response(headers, rows, "presents.xlsx")
+
+    return render_template(
+        "members/gifts.html",
+        rows=result,
+        department=department,
+        position=position,
+        max_age=max_age,
+        departments=dictionary_values("department"),
+        positions=dictionary_values("position"),
     )
 
 

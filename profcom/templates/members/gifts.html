@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Списки подарков{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <h1 class="h3 mb-0">Списки подарков</h1>
+  <a href="{{ url_for('members.gifts', export=1, department=request.args.get('department',''), position=request.args.get('position',''), max_age=request.args.get('max_age','')) }}" class="btn btn-outline-success">{{ icon('file-earmark-excel') }} Excel</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">Отдел</label>
+        <input type="text" name="department" class="form-control" value="{{ department }}" list="departments" placeholder="Все">
+        <datalist id="departments">
+          {% for d in departments %}<option value="{{ d }}">{% endfor %}
+        </datalist>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Должность в профсоюзе</label>
+        <input type="text" name="position" class="form-control" value="{{ position }}" list="positions" placeholder="Все">
+        <datalist id="positions">
+          {% for p in positions %}<option value="{{ p }}">{% endfor %}
+        </datalist>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Макс. возраст детей</label>
+        <input type="number" name="max_age" class="form-control" value="{{ max_age or '' }}" placeholder="Все">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary">{{ icon('filter') }}</button>
+      </div>
+    </form>
+    <div class="form-text">Укажите возраст, если нужен список детских подарков (например, до 14 лет).</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>ФИО</th>
+          <th>Отдел</th>
+          <th>Должность</th>
+          <th>Телефон</th>
+          <th>Взрослых</th>
+          <th>Детей</th>
+          <th>Всего подарков</th>
+          <th>Дети (возраст)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td><a href="{{ url_for('members.detail', id=r.member.id) }}">{{ r.member.full_name }}</a></td>
+          <td>{{ r.member.department }}</td>
+          <td>{{ r.member.position or '-' }}</td>
+          <td class="member-phone">{{ r.member.phone|mask_phone }}</td>
+          <td>1</td>
+          <td>{{ r.children|length }}</td>
+          <td><strong>{{ r.total }}</strong></td>
+          <td>
+            {% for c in r.children %}
+            {{ c.child.full_name }}{% if c.age is not none %} ({{ c.age }}){% endif %}{% if not loop.last %}, {% endif %}
+            {% else %}-{% endfor %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted py-4">Нет данных</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
