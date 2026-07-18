@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Профсоюз{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.jpg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  {% macro icon(name, cls='') -%}
+    <svg class="bi {{ cls }}" aria-hidden="true"><use href="{{ url_for('static', filename='icons/bootstrap-icons.svg') }}#{{ name }}"></use></svg>
+  {%- endmacro %}
+
+  {% macro avatar(name, size=40) -%}
+    {% set words = name.split() %}
+    {% set initials = (words[0][0] if words else '') + (words[1][0] if words | length > 1 else '') %}
+    {% set color_index = (name | length) % 8 %}
+    <span class="avatar avatar-{{ size }} avatar-color-{{ color_index }} d-inline-flex align-items-center justify-content-center rounded-circle text-white fw-bold"><span class="avatar-initials">{{ initials | upper }}</span></span>
+  {%- endmacro %}
+
+  {% macro _gender_icon(member, size) -%}
+    {% set gender = member.gender_or_detect %}
+    {% if gender == 'male' %}
+    <span class="avatar avatar-{{ size }} gender-icon-male d-inline-flex align-items-center justify-content-center rounded-circle">
+      {{ '&#128054;' | safe }}
+    </span>
+    {% elif gender == 'female' %}
+    <span class="avatar avatar-{{ size }} gender-icon-female d-inline-flex align-items-center justify-content-center rounded-circle">
+      {{ '&#128049;' | safe }}
+    </span>
+    {% else %}
+    {{ avatar(member.full_name, size) }}
+    {% endif %}
+  {%- endmacro %}
+
+  {% macro member_avatar(member, size=40) -%}
+    {% if member.photo_path %}
+    <img src="{{ url_for('members.photo', id=member.id) }}" alt="" class="avatar avatar-{{ size }} rounded-circle">
+    {% else %}
+    {{ _gender_icon(member, size) }}
+    {% endif %}
+  {%- endmacro %}
+
+  {% macro member_badges(member) -%}
+    {% set today = today() %}
+    {% set union_years = ((today - member.entry_date).days // 365) %}
+    {% if union_years >= 5 and union_years % 5 == 0 %}
+    <span class="badge bg-warning text-dark me-1" data-bs-toggle="tooltip" title="{{ union_years }} лет непрерывного стажа в профсоюзе">{{ union_years }} лет в профсоюзе</span>
+    {% endif %}
+    {% if member.birth_date %}
+      {% set by = member.birth_date.replace(year=today.year) %}
+      {% set b_year = today.year if by >= today else today.year + 1 %}
+      {% set age = b_year - member.birth_date.year %}
+      {% if age > 0 and age % 5 == 0 %}
+      <span class="badge bg-danger me-1" data-bs-toggle="tooltip" title="Ближайший юбилейный день рождения: {{ age }} лет">Юбилей {{ age }} лет</span>
+      {% endif %}
+    {% endif %}
+  {%- endmacro %}
+
+  {% macro sort_link(label, field, sort, order) -%}
+    {% set args = request.args.to_dict() %}
+    {% if sort == field %}{% set new_order = 'asc' if order == 'desc' else 'desc' %}{% else %}{% set new_order = 'asc' %}{% endif %}
+    {% set _ = args.update({'sort': field, 'order': new_order, 'page': 1}) %}
+    <a href="{{ url_for(request.endpoint, **args) }}" class="text-decoration-none text-dark">
+      {{ label }}{% if sort == field %} {% if order == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+    </a>
+  {%- endmacro %}
+
+  {% macro render_pagination(pagination, endpoint) -%}
+    {% if pagination.pages > 1 %}
+    {% set args = request.args.to_dict() %}
+    <nav aria-label="Страницы" class="mt-3">
+      <ul class="pagination justify-content-center">
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+          {% if pagination.has_prev %}
+            {% set p = args.copy() %}{% set _ = p.update({'page': pagination.prev_num}) %}
+            <a class="page-link" href="{{ url_for(endpoint, **p) }}">Назад</a>
+          {% else %}
+            <span class="page-link">Назад</span>
+          {% endif %}
+        </li>
+        {% for page_num in pagination.iter_pages(left_edge=1, left_current=2, right_current=2, right_edge=1) %}
+          {% if page_num %}
+            <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+              {% set p = args.copy() %}{% set _ = p.update({'page': page_num}) %}
+              <a class="page-link" href="{{ url_for(endpoint, **p) }}">{{ page_num }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+          {% if pagination.has_next %}
+            {% set p = args.copy() %}{% set _ = p.update({'page': pagination.next_num}) %}
+            <a class="page-link" href="{{ url_for(endpoint, **p) }}">Вперёд</a>
+          {% else %}
+            <span class="page-link">Вперёд</span>
+          {% endif %}
+        </li>
+      </ul>
+    </nav>
+    {% endif %}
+  {%- endmacro %}
+
+  {% block navbar %}
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand d-flex align-items-center" href="{{ url_for('main.dashboard') }}">
+        <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Логотип" class="me-2" style="height:32px;width:auto;">
+        Профсоюз
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Переключить меню">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('main.') %}active{% endif %}" href="{{ url_for('main.dashboard') }}">{{ icon('house') }} Главная</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('members.') %}active{% endif %}" href="{{ url_for('members.index') }}">{{ icon('people') }} Члены</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint == 'members.profkom' %}active{% endif %}" href="{{ url_for('members.profkom') }}">{{ icon('building') }} Профком</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint == 'members.committees' %}active{% endif %}" href="{{ url_for('members.committees') }}">{{ icon('people') }} Комитеты</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('payouts.') %}active{% endif %}" href="{{ url_for('payouts.index') }}">{{ icon('cash') }} Выплаты</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('protocols.') %}active{% endif %}" href="{{ url_for('protocols.index') }}">{{ icon('file-earmark-text') }} Протоколы</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('events.') %}active{% endif %}" href="{{ url_for('events.index') }}">{{ icon('calendar-event') }} Мероприятия</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('finances.') %}active{% endif %}" href="{{ url_for('finances.index') }}">{{ icon('wallet') }} Финансы</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('birthdays.') %}active{% endif %}" href="{{ url_for('birthdays.index') }}">{{ icon('gift') }} Именинники</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint == 'main.timeline' %}active{% endif %}" href="{{ url_for('main.timeline') }}">{{ icon('clock-history') }} Лента</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('reports.') %}active{% endif %}" href="{{ url_for('reports.index') }}">{{ icon('file-earmark-excel') }} Отчёты</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('settings.') %}active{% endif %}" href="{{ url_for('settings.index') }}">{{ icon('gear') }} Настройки</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('auth.logout') }}">{{ icon('box-arrow-right') }} Выход</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  {% endblock %}
+
+  <main class="container-fluid px-4 py-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block footer %}
+  <footer class="bg-white text-center py-3 text-muted small mt-auto">
+    <div class="container-fluid">
+      Профсоюз &middot; учёт профсоюзной организации
+    </div>
+  </footer>
+  {% endblock %}
+
+  <button type="button" id="backToTop" class="btn btn-primary rounded-circle shadow d-none" title="Наверх" aria-label="Наверх" style="position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1040; width: 48px; height: 48px;">
+    {{ icon('arrow-up') }}
+  </button>
+
+  <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

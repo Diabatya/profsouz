@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon, member_avatar %}
+{% block title %}Комитеты{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Комитеты профкома</h1>
+  <a href="{{ url_for('members.groups') }}" class="btn btn-outline-secondary">{{ icon('arrow-left') }} Группы</a>
+</div>
+
+{% if not groups %}
+<div class="alert alert-info">Комитеты ещё не созданы. <a href="{{ url_for('members.groups') }}">Создать</a></div>
+{% endif %}
+
+<div class="row g-4">
+  {% for g in groups %}
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>{{ g.name }}</span>
+        <a href="{{ url_for('members.group_detail', id=g.id) }}" class="btn btn-sm btn-outline-primary">{{ icon('people') }}</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ФИО</th>
+              <th>Должность</th>
+              <th>Отдел</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in g.members %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  {{ member_avatar(m, 40) }}
+                  <a href="{{ url_for('members.detail', id=m.id) }}">{{ m.full_name }}</a>
+                </div>
+              </td>
+              <td>{{ m.position or '-' }}</td>
+              <td>{{ m.department }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted py-4">В комитете пока никого нет</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

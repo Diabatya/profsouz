@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon, member_avatar, member_badges %}
+{% block title %}{{ member.full_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-3">
+    {{ member_avatar(member, 64) }}
+    <div>
+      <h1 class="h3 mb-0">{{ member.full_name }}</h1>
+      <div class="mt-1">{{ member_badges(member) }}</div>
+    </div>
+  </div>
+  <div>
+    <button type="button" class="btn btn-outline-secondary me-1 d-print-none" onclick="window.print()">{{ icon('printer') }} Печать</button>
+    <a href="{{ url_for('members.edit', id=member.id) }}" class="btn btn-outline-secondary me-1">{{ icon('pencil') }} Редактировать</a>
+    {% if member.status == 'active' %}
+    <form method="post" action="{{ url_for('members.delete', id=member.id) }}" class="d-inline delete-form">
+      <button type="submit" class="btn btn-outline-danger">{{ icon('trash') }} Исключить</button>
+    </form>
+    {% else %}
+    <form method="post" action="{{ url_for('members.restore', id=member.id) }}" class="d-inline">
+      <button type="submit" class="btn btn-outline-success">{{ icon('check-lg') }} Восстановить</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card mb-4">
+      <div class="card-header">Личные данные</div>
+      <div class="card-body">
+        <p><strong>ФИО:</strong> {{ member.full_name }}</p>
+        <p><strong>Пол:</strong> {{ member.gender_display }}</p>
+        <p><strong>Отдел:</strong> {{ member.department }}</p>
+        <p><strong>Должность:</strong> {{ member.position or '-' }}</p>
+        <p><strong>Дата рождения:</strong> {{ member.birth_date|dt }}</p>
+        <p><strong>Дата вступления:</strong> {{ member.entry_date|dt }}</p>
+        <p><strong>Статус:</strong>
+          {% if member.status == 'active' %}
+          <span class="badge bg-success">Активен</span>
+          {% else %}
+          <span class="badge bg-secondary">Не член</span>
+          {% endif %}
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Группы</span>
+        <a href="{{ url_for('members.groups') }}" class="btn btn-sm btn-outline-primary">Управление группами</a>
+      </div>
+      <div class="card-body">
+        {% if member.groups %}
+        <ul class="list-group list-group-flush">
+          {% for g in member.groups %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ g.name }}
+            <span class="badge bg-light text-dark">{{ g.type }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted mb-0">Не состоит в группах</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>История выплат</span>
+        <a href="{{ url_for('payouts.add', member_id=member.id) }}" class="btn btn-sm btn-success">{{ icon('plus-lg') }} Добавить выплату</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Тип</th>
+              <th>Сумма</th>
+              <th>Подписана</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in member.payouts.all()|sort(attribute='date', reverse=true) %}
+            <tr>
+              <td>{{ p.date|dt }}</td>
+              <td>{{ p.type.name }}</td>
+              <td>{{ p.amount|money }} ₽</td>
+              <td>{% if p.signed %}<span class="badge bg-success">{{ icon('check-lg') }}</span>{% else %}<span class="badge bg-secondary">Нет</span>{% endif %}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-3">Нет выплат</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">История статуса</div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Старый</th>
+              <th>Новый</th>
+              <th>Дата выхода</th>
+              <th>Примечание</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for h in member.status_history.all() %}
+            <tr>
+              <td>{{ h.changed_at.strftime('%d.%m.%Y %H:%M') }}</td>
+              <td>{{ h.old_status or '-' }}</td>
+              <td>{{ h.new_status }}</td>
+              <td>{{ h.exit_date|dt if h.exit_date else '-' }}</td>
+              <td>{{ h.note or '-' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-3">Нет записей</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

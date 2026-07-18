@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon, member_avatar %}
+{% block title %}Профком{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <h1 class="h3 mb-0">Профком</h1>
+  <div class="d-flex gap-2 align-items-center">
+    <form method="get" class="d-flex gap-2">
+      <select name="gender" class="form-select">
+        <option value="">Все</option>
+        <option value="male" {% if selected_gender == 'male' %}selected{% endif %}>Мужской</option>
+        <option value="female" {% if selected_gender == 'female' %}selected{% endif %}>Женский</option>
+      </select>
+      <button type="submit" class="btn btn-outline-primary">{{ icon('filter') }}</button>
+    </form>
+    <a href="{{ url_for('members.groups') }}" class="btn btn-outline-secondary">{{ icon('arrow-left') }} Группы</a>
+  </div>
+</div>
+
+{% if not groups %}
+<div class="alert alert-info">Группа «Профком» ещё не создана. <a href="{{ url_for('members.groups') }}">Создать</a></div>
+{% endif %}
+
+{% for g in groups %}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>{{ g.name }}</span>
+    <a href="{{ url_for('members.group_detail', id=g.id) }}" class="btn btn-sm btn-outline-primary">{{ icon('pencil') }} Управление</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>ФИО</th>
+          <th>Должность</th>
+          <th>Отдел</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in members_by_group[g.id] %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              {{ member_avatar(m, 40) }}
+              <a href="{{ url_for('members.detail', id=m.id) }}">{{ m.full_name }}</a>
+            </div>
+          </td>
+          <td>{{ m.position or 'Член профкома' }}</td>
+          <td>{{ m.department }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="text-center text-muted py-4">В профкоме пока никого нет</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

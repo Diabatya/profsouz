@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Импорт членов{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Импорт членов из Excel</h1>
+  <a href="{{ url_for('members.index') }}" class="btn btn-outline-secondary">{{ icon('arrow-left') }} Назад</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <p>Загрузите файл <strong>.xlsx</strong> с колонками:</p>
+    <ul>
+      <li><strong>ФИО</strong> (обязательно)</li>
+      <li><strong>Отдел</strong> (обязательно)</li>
+      <li><strong>Должность</strong> (необязательно)</li>
+      <li><strong>Пол</strong> (необязательно: м/муж/мужской или ж/жен/женский; если пусто — автоопределение по отчеству)</li>
+      <li><strong>Дата рождения</strong> (обязательно, формат ГГГГ-ММ-ДД или ДД.ММ.ГГГГ)</li>
+      <li><strong>Дата вступления</strong> (обязательно, формат ГГГГ-ММ-ДД или ДД.ММ.ГГГГ)</li>
+    </ul>
+    <div class="table-responsive mb-3">
+      <table class="table table-sm table-bordered table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>ФИО</th>
+            <th>Отдел</th>
+            <th>Должность</th>
+            <th>Пол</th>
+            <th>Дата рождения</th>
+            <th>Дата вступления</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="table-success">
+            <td>Иванов Иван Иванович</td>
+            <td>Отдел кадров</td>
+            <td>Член профкома</td>
+            <td>муж</td>
+            <td>1985-03-15</td>
+            <td>2020-01-10</td>
+          </tr>
+          <tr>
+            <td>Петрова Мария Сергеевна</td>
+            <td>Бухгалтерия</td>
+            <td></td>
+            <td></td>
+            <td>1990-07-22</td>
+            <td>2021-05-18</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <a href="{{ url_for('members.import_template') }}" class="btn btn-outline-success">{{ icon('download') }} Скачать шаблон (.xlsx)</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
+      <div class="col-md-8">
+        <label class="form-label">Файл Excel</label>
+        <input type="file" name="file" class="form-control" accept=".xlsx" required>
+      </div>
+      <div class="col-md-4">
+        <button type="submit" class="btn btn-primary">{{ icon('upload') }} Импортировать</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

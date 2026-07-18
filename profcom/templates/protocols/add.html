@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Добавить протокол{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Добавить протокол</h1>
+  <a href="{{ url_for('protocols.index') }}" class="btn btn-outline-secondary">{{ icon('arrow-left') }} Назад</a>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Номер</label>
+          <input type="text" name="number" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Дата</label>
+          <input type="date" name="date" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Общая сумма, ₽</label>
+          <input type="number" step="0.01" name="total_amount" class="form-control" value="0.00">
+        </div>
+        <div class="col-12">
+          <label class="form-label">PDF-файл</label>
+          <input type="file" name="file" class="form-control" accept=".pdf">
+        </div>
+      </div>
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary">{{ icon('floppy') }} Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

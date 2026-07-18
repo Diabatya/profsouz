@@ -1,0 +1,10 @@
+Flask==3.0.3
+Werkzeug==3.0.3
+SQLAlchemy==2.0.31
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.7
+Flask-WTF==1.2.1
+openpyxl==3.1.5
+Pillow
+pyinstaller>=6.10,<7.0
+pyinstaller-hooks-contrib>=2024.7

@@ -1,0 +1,168 @@
+import logging
+import os
+import sys
+from datetime import date
+
+from flask import Flask, g, redirect, session, url_for
+from flask_migrate import Migrate
+
+import config
+from models import Admin, AnniversarySetting, Group, PayoutType, db
+from utils import login_required
+
+
+def resource_path(relative_path):
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
+
+
+base_dir = config.BASE_DIR
+app = Flask(
+    __name__, template_folder=resource_path("templates"), static_folder=resource_path("static")
+)
+app.config.from_object("config")
+app.config["UPLOAD_FOLDER"] = os.path.join(base_dir, "uploads")
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    os.environ.get("DATABASE_URL")
+    or app.config.get("DATABASE_URL")
+    or "sqlite:///" + os.path.join(base_dir, "database.db")
+)
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db.init_app(app)
+migrate = Migrate(app, db)
+
+log_path = os.path.join(base_dir, "app.log")
+file_handler = logging.FileHandler(log_path, encoding="utf-8")
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(
+    logging.Formatter("%(asctime)s %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+)
+app.logger.addHandler(file_handler)
+app.logger.setLevel(logging.INFO)
+app.logger.info("Приложение запущено")
+
+
+@app.template_filter("dt")
+def dt_filter(value):
+    if value:
+        return value.strftime("%d.%m.%Y")
+    return ""
+
+
+@app.template_filter("money")
+def money_filter(value):
+    try:
+        return f"{float(value):,.2f}".replace(",", " ")
+    except Exception:
+        return value
+
+
+@app.before_request
+def load_user():
+    g.admin = None
+    if "admin_id" in session:
+        g.admin = db.session.get(Admin, session["admin_id"])
+
+
+@app.route("/")
+@login_required
+def index():
+    return redirect(url_for("main.dashboard"))
+
+
+@app.context_processor
+def utility_processor():
+    return {"today": date.today}
+
+
+def seed_data():
+    if Admin.query.count() == 0:
+        admin = Admin(username=config.USERNAME)
+        admin.set_password(config.PASSWORD)
+        db.session.add(admin)
+
+    default_types = [
+        ("Материальная помощь", 2000),
+        ("Премия к празднику", 0),
+        ("Подарок юбиляру", 0),
+    ]
+    for name, amount in default_types:
+        if not PayoutType.query.filter_by(name=name).first():
+            db.session.add(PayoutType(name=name, default_amount=amount))
+
+    anniversaries = {
+        20: 2000,
+        25: 2500,
+        30: 3000,
+        35: 3500,
+        40: 4000,
+        45: 4500,
+        50: 5000,
+        55: 5500,
+        60: 6000,
+        65: 6500,
+        70: 7000,
+    }
+    for age, amount in anniversaries.items():
+        if not db.session.get(AnniversarySetting, age):
+            db.session.add(AnniversarySetting(age=age, amount=amount))
+
+    if not Group.query.filter_by(name="Профком", type="profkom").first():
+        db.session.add(Group(name="Профком", type="profkom"))
+
+    db.session.commit()
+
+
+from routes import register_blueprints  # noqa: E402
+
+register_blueprints(app)
+
+
+def migrate_db():
+    from sqlalchemy import inspect, text
+
+    try:
+        inspector = inspect(db.engine)
+        cols = [c["name"] for c in inspector.get_columns("member")]
+        if "photo_path" not in cols:
+            db.session.execute(text("ALTER TABLE member ADD COLUMN photo_path VARCHAR(255)"))
+        if "gender" not in cols:
+            db.session.execute(text("ALTER TABLE member ADD COLUMN gender VARCHAR(10)"))
+        db.session.commit()
+    except Exception as e:
+        app.logger.warning("Миграция БД пропущена: %s", e)
+
+
+def init_db():
+    with app.app_context():
+        from flask_migrate import stamp, upgrade
+        from sqlalchemy import inspect
+
+        tables = inspect(db.engine).get_table_names()
+        if tables and "alembic_version" not in tables:
+            # существующая БД без миграций — создаём схему и ставим метку
+            db.create_all()
+            migrate_db()
+            stamp(revision="head")
+        else:
+            # пустая БД или уже под контролем alembic
+            try:
+                upgrade()
+            except Exception:
+                # fallback, если миграций нет
+                db.create_all()
+                migrate_db()
+        os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+        seed_data()
+
+
+if os.environ.get("PROFCOM_SKIP_INIT") != "1":
+    init_db()
+
+
+if __name__ == "__main__":
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else app.config.get("PORT", 5000)
+    print(f"Сервер запущен. Откройте http://127.0.0.1:{port}")
+    app.run(host="0.0.0.0", port=port, debug=False)

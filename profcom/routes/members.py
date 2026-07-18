@@ -1,0 +1,580 @@
+import difflib
+import os
+import re
+import uuid
+from datetime import date, datetime
+from io import BytesIO
+
+from flask import (
+    Blueprint,
+    abort,
+    current_app,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    url_for,
+)
+from openpyxl import load_workbook
+
+from models import Group, Member, MemberStatusHistory, db
+from utils import apply_sort, login_required, parse_date
+
+bp = Blueprint("members", __name__, url_prefix="/members")
+
+
+ALLOWED_PHOTO = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+def _save_photo(file):
+    if not file or not file.filename:
+        return None
+    ext = os.path.splitext(file.filename.lower())[1]
+    if ext not in ALLOWED_PHOTO:
+        return None
+    photo_dir = os.path.join(current_app.config["UPLOAD_FOLDER"], "photos")
+    os.makedirs(photo_dir, exist_ok=True)
+    try:
+        from PIL import Image
+
+        img = Image.open(file.stream)
+        img = img.convert("RGB")
+        width, height = img.size
+        size = min(width, height)
+        left = (width - size) // 2
+        top = (height - size) // 2
+        img = img.crop((left, top, left + size, top + size))
+        img = img.resize((400, 400), getattr(Image, "Resampling", Image).LANCZOS)
+        filename = f"{uuid.uuid4().hex}.jpg"
+        path = os.path.join(photo_dir, filename)
+        img.save(path, "JPEG", quality=85, optimize=True)
+        return f"photos/{filename}"
+    except Exception:
+        filename = f"{uuid.uuid4().hex}{ext}"
+        path = os.path.join(photo_dir, filename)
+        file.stream.seek(0)
+        file.save(path)
+        return f"photos/{filename}"
+
+
+def _delete_photo(member):
+    if member.photo_path:
+        full = os.path.join(current_app.config["UPLOAD_FOLDER"], member.photo_path)
+        try:
+            if os.path.exists(full):
+                os.remove(full)
+        except OSError:
+            pass
+        member.photo_path = None
+
+
+@bp.route("/")
+@login_required
+def index():
+    q = Member.query
+    dept = request.args.get("dept", "")
+    status = request.args.get("status", "")
+    gender = request.args.get("gender", "")
+    position = request.args.get("position", "")
+    search = request.args.get("search", "")
+    sort = request.args.get("sort", "full_name")
+    order = request.args.get("order", "asc")
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    view = request.args.get("view", "table")
+
+    if status:
+        q = q.filter(Member.status == status)
+    else:
+        q = q.filter(Member.status == "active")
+
+    if dept:
+        q = q.filter(Member.department == dept)
+    if gender:
+        q = q.filter(Member.gender == gender)
+    if position:
+        q = q.filter(Member.position == position)
+    if search:
+        q = q.filter(Member.full_name.ilike(f"%{search}%"))
+
+    q = apply_sort(
+        q, sort, order, Member, ["full_name", "department", "position", "birth_date", "entry_date"]
+    )
+    pagination = q.paginate(page=page, per_page=max(per_page, 5), error_out=False)
+    departments = [
+        r[0]
+        for r in db.session.query(Member.department).distinct().order_by(Member.department).all()
+    ]
+    positions = [
+        r[0]
+        for r in db.session.query(Member.position).distinct().order_by(Member.position).all()
+        if r[0]
+    ]
+    return render_template(
+        "members/list.html",
+        members=pagination.items,
+        pagination=pagination,
+        departments=departments,
+        positions=positions,
+        selected_dept=dept,
+        selected_status=status,
+        selected_position=position,
+        selected_gender=gender,
+        search=search,
+        sort=sort,
+        order=order,
+        per_page=per_page,
+        view=view,
+    )
+
+
+@bp.route("/add", methods=["GET", "POST"])
+@login_required
+def add():
+    from forms import MemberForm
+
+    form = MemberForm()
+    if form.validate_on_submit():
+        full_name = form.full_name.data.strip()
+        department = form.department.data.strip()
+        position = (form.position.data or "").strip() or None
+        gender = form.gender.data
+        birth_date = parse_date(form.birth_date.data)
+        entry_date = parse_date(form.entry_date.data)
+
+        if not birth_date or not entry_date:
+            flash("Неверный формат даты", "danger")
+            return render_template("members/add.html", form=form)
+
+        member = Member(
+            full_name=full_name,
+            department=department,
+            position=position,
+            birth_date=birth_date,
+            entry_date=entry_date,
+            status="active",
+        )
+        if gender in ("male", "female"):
+            member.gender = gender
+        else:
+            member.gender = Member.detect_gender(full_name)
+        db.session.add(member)
+        db.session.flush()
+        photo_path = _save_photo(request.files.get("photo"))
+        if photo_path:
+            member.photo_path = photo_path
+        db.session.add(
+            MemberStatusHistory(
+                member_id=member.id, old_status=None, new_status="active", note="Создание"
+            )
+        )
+        db.session.commit()
+        flash("Член профсоюза добавлен", "success")
+        return redirect(url_for("members.index"))
+    return render_template("members/add.html", form=form)
+
+
+def _normalize_full_name(name):
+    name = str(name or "").strip()
+    name = re.sub(r"\s+", " ", name)
+    return name.lower().replace("ё", "е")
+
+
+def _find_existing_member(full_name, existing_map):
+    norm = _normalize_full_name(full_name)
+    if not norm:
+        return None
+    member = existing_map.get(norm)
+    if member:
+        return member
+    close = difflib.get_close_matches(norm, existing_map.keys(), n=1, cutoff=0.85)
+    if close:
+        return existing_map.get(close[0])
+    return None
+
+
+def _parse_date_value(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    s = str(value).strip()
+    if not s:
+        return None
+    return parse_date(s)
+
+
+@bp.route("/import", methods=["GET", "POST"])
+@login_required
+def import_members():
+    if request.method == "POST":
+        file = request.files.get("file")
+        if not file or not file.filename.lower().endswith(".xlsx"):
+            flash("Загрузите файл Excel (.xlsx)", "danger")
+            return redirect(url_for("members.import_members"))
+
+        wb = load_workbook(filename=BytesIO(file.read()), data_only=True)
+        ws = wb.active
+        first_row = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+        headers = [str(h).strip() if h else "" for h in first_row]
+
+        mapping = {
+            "ФИО": "full_name",
+            "Отдел": "department",
+            "Должность": "position",
+            "Пол": "gender",
+            "Дата рождения": "birth_date",
+            "Дата вступления": "entry_date",
+        }
+        col_map = {}
+        for i, h in enumerate(headers):
+            if h in mapping:
+                col_map[mapping[h]] = i
+
+        required = ["full_name", "department", "birth_date", "entry_date"]
+        if not all(k in col_map for k in required):
+            flash(
+                "В файле должны быть колонки: ФИО, Отдел, Дата рождения, Дата вступления", "danger"
+            )
+            return redirect(url_for("members.import_members"))
+
+        # загружаем текущих членов для поиска дубликатов (с нормализацией)
+        existing_map = {_normalize_full_name(m.full_name): m for m in Member.query.all()}
+
+        created = 0
+        updated = 0
+        errors = []
+        try:
+            for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                full_name = (
+                    str(row[col_map["full_name"]]).strip() if row[col_map["full_name"]] else ""
+                )
+                department = (
+                    str(row[col_map["department"]]).strip() if row[col_map["department"]] else ""
+                )
+                if not full_name:
+                    errors.append(f"Строка {row_idx}: не указано ФИО")
+                    continue
+                if not department:
+                    errors.append(f"Строка {row_idx}: не указан отдел")
+                    continue
+                birth_date = _parse_date_value(row[col_map["birth_date"]])
+                entry_date = _parse_date_value(row[col_map["entry_date"]])
+                if not birth_date:
+                    errors.append(f"Строка {row_idx}: неверная дата рождения")
+                    continue
+                if not entry_date:
+                    errors.append(f"Строка {row_idx}: неверная дата вступления")
+                    continue
+                position = None
+                if "position" in col_map and row[col_map["position"]]:
+                    position = str(row[col_map["position"]]).strip() or None
+
+                gender = Member.detect_gender(full_name)
+                if "gender" in col_map and row[col_map["gender"]]:
+                    g = str(row[col_map["gender"]]).strip().lower()
+                    if g in ("м", "муж", "мужской", "male"):
+                        gender = "male"
+                    elif g in ("ж", "жен", "женский", "female"):
+                        gender = "female"
+
+                member = _find_existing_member(full_name, existing_map)
+                if member:
+                    member.department = department
+                    member.position = position
+                    member.birth_date = birth_date
+                    member.entry_date = entry_date
+                    member.gender = gender
+                    note = "Обновление при импорте Excel"
+                    updated += 1
+                else:
+                    member = Member(
+                        full_name=full_name,
+                        department=department,
+                        position=position,
+                        birth_date=birth_date,
+                        entry_date=entry_date,
+                        status="active",
+                        gender=gender,
+                    )
+                    db.session.add(member)
+                    db.session.flush()
+                    existing_map[_normalize_full_name(full_name)] = member
+                    note = "Импорт из Excel"
+                    created += 1
+                db.session.add(
+                    MemberStatusHistory(
+                        member_id=member.id, old_status=None, new_status="active", note=note
+                    )
+                )
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Ошибка импорта: {e}", "danger")
+            return redirect(url_for("members.import_members"))
+
+        msg = f"Создано {created}, обновлено {updated} членов"
+        if errors:
+            msg += f", ошибок: {len(errors)}"
+            for e in errors[:10]:
+                flash(e, "danger")
+            if len(errors) > 10:
+                flash(f"... и ещё {len(errors) - 10} ошибок", "danger")
+        flash(msg, "success")
+        return redirect(url_for("members.index"))
+    return render_template("members/import.html")
+
+
+@bp.route("/import/template")
+@login_required
+def import_template():
+    from utils import excel_response
+
+    headers = ["ФИО", "Отдел", "Должность", "Пол", "Дата рождения", "Дата вступления"]
+    example = [
+        "Иванов Иван Иванович",
+        "Отдел кадров",
+        "Член профкома",
+        "муж",
+        "1985-03-15",
+        "2020-01-10",
+    ]
+    return excel_response(headers, [example], "shablon_importa.xlsx")
+
+
+@bp.route("/<int:id>")
+@login_required
+def detail(id):
+    member = db.session.get(Member, id) or abort(404)
+    return render_template("members/detail.html", member=member)
+
+
+@bp.route("/<int:id>/photo")
+def photo(id):
+    member = db.session.get(Member, id) or abort(404)
+    if member.photo_path:
+        return send_from_directory(current_app.config["UPLOAD_FOLDER"], member.photo_path)
+    abort(404)
+
+
+@bp.route("/<int:id>/edit", methods=["GET", "POST"])
+@login_required
+def edit(id):
+    from forms import MemberForm
+
+    member = db.session.get(Member, id) or abort(404)
+    form = MemberForm(obj=member)
+    if form.validate_on_submit():
+        full_name = form.full_name.data.strip()
+        department = form.department.data.strip()
+        position = (form.position.data or "").strip() or None
+        gender = form.gender.data
+        birth_date = parse_date(form.birth_date.data)
+        entry_date = parse_date(form.entry_date.data)
+
+        if not birth_date or not entry_date:
+            flash("Неверный формат даты", "danger")
+            return render_template("members/edit.html", member=member, form=form)
+
+        member.full_name = full_name
+        member.department = department
+        member.position = position
+        member.birth_date = birth_date
+        member.entry_date = entry_date
+        if gender in ("male", "female"):
+            member.gender = gender
+        else:
+            member.gender = Member.detect_gender(full_name)
+
+        if request.form.get("delete_photo"):
+            _delete_photo(member)
+        else:
+            photo_path = _save_photo(request.files.get("photo"))
+            if photo_path:
+                _delete_photo(member)
+                member.photo_path = photo_path
+
+        db.session.commit()
+        flash("Данные обновлены", "success")
+        return redirect(url_for("members.detail", id=member.id))
+    return render_template("members/edit.html", member=member, form=form)
+
+
+@bp.route("/<int:id>/delete", methods=["POST"])
+@login_required
+def delete(id):
+    member = db.session.get(Member, id) or abort(404)
+    if member.status == "not_member":
+        flash("Член уже исключён", "warning")
+        return redirect(url_for("members.index"))
+
+    old_status = member.status
+    member.status = "not_member"
+    db.session.add(
+        MemberStatusHistory(
+            member_id=member.id,
+            old_status=old_status,
+            new_status="not_member",
+            exit_date=date.today(),
+            note="Исключение",
+        )
+    )
+    db.session.commit()
+    flash("Член исключён", "success")
+    return redirect(url_for("members.index"))
+
+
+@bp.route("/<int:id>/restore", methods=["POST"])
+@login_required
+def restore(id):
+    member = db.session.get(Member, id) or abort(404)
+    if member.status == "active":
+        flash("Член уже активен", "warning")
+        return redirect(url_for("members.index"))
+
+    old_status = member.status
+    member.status = "active"
+    db.session.add(
+        MemberStatusHistory(
+            member_id=member.id, old_status=old_status, new_status="active", note="Восстановление"
+        )
+    )
+    db.session.commit()
+    flash("Член восстановлен", "success")
+    return redirect(url_for("members.index"))
+
+
+@bp.route("/bulk", methods=["POST"])
+@login_required
+def bulk():
+    ids_str = request.form.get("member_ids", "")
+    action = request.form.get("action", "")
+    value = request.form.get("value", "").strip()
+    ids = [int(i) for i in ids_str.split(",") if i.isdigit()]
+    members = Member.query.filter(Member.id.in_(ids)).all()
+    count = 0
+    for member in members:
+        if action == "change_department" and value:
+            member.department = value
+            count += 1
+        elif action == "change_position":
+            member.position = value or None
+            count += 1
+        elif action == "change_gender" and value in ("male", "female"):
+            member.gender = value
+            count += 1
+        elif action == "exclude" and member.status == "active":
+            old_status = member.status
+            member.status = "not_member"
+            db.session.add(
+                MemberStatusHistory(
+                    member_id=member.id,
+                    old_status=old_status,
+                    new_status="not_member",
+                    exit_date=date.today(),
+                    note="Массовое исключение",
+                )
+            )
+            count += 1
+    db.session.commit()
+    flash(f"Обработано {count} членов", "success")
+    return redirect(url_for("members.index"))
+
+
+@bp.route("/profkom")
+@login_required
+def profkom():
+    gender = request.args.get("gender", "")
+    groups = Group.query.filter_by(type="profkom").order_by(Group.name).all()
+    rank = {"Председатель": 0, "Заместитель председателя": 1, "Секретарь": 2, "Член профкома": 3}
+    members_by_group = {}
+    for g in groups:
+        members = g.members
+        if gender in ("male", "female"):
+            members = [m for m in members if m.gender_or_detect == gender]
+        members_by_group[g.id] = sorted(
+            members, key=lambda m: rank.get(m.position or "Член профкома", 99)
+        )
+    return render_template(
+        "members/profkom.html",
+        groups=groups,
+        members_by_group=members_by_group,
+        selected_gender=gender,
+    )
+
+
+@bp.route("/committees")
+@login_required
+def committees():
+    groups = Group.query.filter_by(type="committee").order_by(Group.name).all()
+    return render_template("members/committees.html", groups=groups)
+
+
+@bp.route("/groups", methods=["GET", "POST"])
+@login_required
+def groups():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        gtype = request.form.get("type", "other")
+        if name:
+            db.session.add(Group(name=name, type=gtype))
+            db.session.commit()
+            flash("Группа создана", "success")
+        else:
+            flash("Укажите название группы", "danger")
+        return redirect(url_for("members.groups"))
+    q = Group.query
+    sort = request.args.get("sort", "name")
+    order = request.args.get("order", "asc")
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    q = apply_sort(q, sort, order, Group, ["name", "type"])
+    pagination = q.paginate(page=page, per_page=max(per_page, 5), error_out=False)
+    return render_template(
+        "members/groups.html",
+        groups=pagination.items,
+        pagination=pagination,
+        sort=sort,
+        order=order,
+        per_page=per_page,
+    )
+
+
+@bp.route("/groups/<int:id>/delete", methods=["POST"])
+@login_required
+def delete_group(id):
+    group = db.session.get(Group, id) or abort(404)
+    group.members = []
+    db.session.delete(group)
+    db.session.commit()
+    flash("Группа удалена", "success")
+    return redirect(url_for("members.groups"))
+
+
+@bp.route("/groups/<int:id>", methods=["GET", "POST"])
+@login_required
+def group_detail(id):
+    group = db.session.get(Group, id) or abort(404)
+    if request.method == "POST":
+        member_id = request.form.get("member_id", type=int)
+        if member_id:
+            member = db.session.get(Member, member_id)
+            if member and member not in group.members:
+                group.members.append(member)
+                db.session.commit()
+                flash("Член добавлен в группу", "success")
+    available = Member.query.filter_by(status="active").order_by(Member.full_name).all()
+    return render_template("members/group_detail.html", group=group, available=available)
+
+
+@bp.route("/groups/<int:group_id>/remove/<int:member_id>", methods=["POST"])
+@login_required
+def remove_from_group(group_id, member_id):
+    group = db.session.get(Group, group_id) or abort(404)
+    member = db.session.get(Member, member_id) or abort(404)
+    if member in group.members:
+        group.members.remove(member)
+        db.session.commit()
+        flash("Член исключён из группы", "success")
+    return redirect(url_for("members.group_detail", id=group.id))

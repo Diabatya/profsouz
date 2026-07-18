@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Настройки{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Настройки</h1>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">Типы выплат</div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('settings.add_payout_type') }}" class="row g-2 mb-3">
+          <div class="col-5"><input type="text" name="name" class="form-control" placeholder="Название" required></div>
+          <div class="col-4"><input type="number" step="0.01" name="default_amount" class="form-control" placeholder="Сумма по умол." value="0"></div>
+          <div class="col-3"><button type="submit" class="btn btn-success w-100">{{ icon('plus-lg') }}</button></div>
+        </form>
+        <ul class="list-group list-group-flush">
+          {% for t in payout_types %}
+          <li class="list-group-item">
+            <div class="row g-2 align-items-center">
+              <form method="post" action="{{ url_for('settings.edit_payout_type', id=t.id) }}" class="col-9 row g-2 align-items-center">
+                <div class="col-6"><input type="text" name="name" class="form-control form-control-sm" value="{{ t.name }}" required></div>
+                <div class="col-4"><input type="number" step="0.01" name="default_amount" class="form-control form-control-sm" value="{{ t.default_amount }}" required></div>
+                <div class="col-2"><button type="submit" class="btn btn-sm btn-primary w-100">{{ icon('floppy') }}</button></div>
+              </form>
+              <form method="post" action="{{ url_for('settings.delete_payout_type', id=t.id) }}" class="col-3 delete-form">
+                <button type="submit" class="btn btn-sm btn-danger w-100">{{ icon('trash') }}</button>
+              </form>
+            </div>
+          </li>
+          {% else %}
+          <li class="list-group-item text-muted">Нет типов выплат</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">Юбилейные даты и суммы</div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover">
+            <thead>
+              <tr><th>Возраст</th><th>Сумма, ₽</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for s in anniversaries %}
+              <tr>
+                <td>{{ s.age }}</td>
+                <td>
+                  <form method="post" action="{{ url_for('settings.save_anniversaries') }}" class="d-flex gap-2">
+                    <input type="hidden" name="age" value="{{ s.age }}">
+                    <input type="number" step="0.01" name="amount" class="form-control form-control-sm" value="{{ s.amount }}">
+                    <button type="submit" class="btn btn-sm btn-primary">{{ icon('floppy') }}</button>
+                  </form>
+                </td>
+                <td>
+                  <form method="post" action="{{ url_for('settings.delete_anniversary', age=s.age) }}" class="delete-form">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">{{ icon('trash') }}</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <form method="post" action="{{ url_for('settings.save_anniversaries') }}" class="row g-2 mb-3">
+          <div class="col-4"><input type="number" name="new_age" class="form-control" placeholder="Возраст"></div>
+          <div class="col-5"><input type="number" step="0.01" name="new_amount" class="form-control" placeholder="Сумма"></div>
+          <div class="col-3"><button type="submit" class="btn btn-primary w-100">{{ icon('floppy') }}</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-2">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">Смена пароля</div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('settings.change_password') }}">
+          {{ change_password_form.hidden_tag() }}
+          <div class="mb-3">
+            <label class="form-label">Текущий пароль</label>
+            <input type="password" name="old_password" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Новый пароль</label>
+            <input type="password" name="new_password" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Повторите новый пароль</label>
+            <input type="password" name="confirm_password" class="form-control" required>
+          </div>
+          <button type="submit" class="btn btn-primary">{{ icon('floppy') }} Изменить пароль</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">Бэкап базы данных</div>
+      <div class="card-body">
+        <p class="text-muted">Скачать копию database.db с меткой времени.</p>
+        <a href="{{ url_for('settings.backup') }}" class="btn btn-outline-primary mb-3">{{ icon('download') }} Скачать базу данных</a>
+        <hr>
+        <p class="text-muted">Восстановить базу из файла .db. Текущая база будет сохранена как database.db.bak.</p>
+        <form method="post" action="{{ url_for('settings.restore') }}" enctype="multipart/form-data">
+          <div class="input-group">
+            <input type="file" name="file" class="form-control" accept=".db" required>
+            <button type="submit" class="btn btn-outline-danger">{{ icon('upload') }} Восстановить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

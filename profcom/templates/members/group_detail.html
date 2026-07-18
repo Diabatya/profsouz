@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon, member_avatar %}
+{% block title %}{{ group.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">{{ group.name }} <span class="badge bg-light text-dark">
+            {% if group.type == 'profkom' %}Профком
+            {% elif group.type == 'committee' %}Комитет
+            {% elif group.type == 'department' %}Отдел
+            {% else %}Другое{% endif %}
+          </span></h1>
+  <a href="{{ url_for('members.groups') }}" class="btn btn-outline-secondary">{{ icon('arrow-left') }} Назад</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Добавить члена в группу</div>
+  <div class="card-body">
+    <form method="post" class="row g-3 align-items-end">
+      <div class="col-md-9">
+        <label class="form-label">Член профсоюза</label>
+        <select name="member_id" class="form-select" required>
+          <option value="">Выберите</option>
+          {% for m in available %}
+          {% if m not in group.members %}
+          <option value="{{ m.id }}">{{ m.full_name }} ({{ m.department }})</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-success">{{ icon('plus-lg') }} Добавить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Члены группы</div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>ФИО</th>
+          <th>Отдел</th>
+          <th>Должность</th>
+          <th class="text-end">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in group.members %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              {{ member_avatar(m, 40) }}
+              <a href="{{ url_for('members.detail', id=m.id) }}">{{ m.full_name }}</a>
+            </div>
+          </td>
+          <td>{{ m.department }}</td>
+          <td>{{ m.position or '-' }}</td>
+          <td class="text-end">
+            <form method="post" action="{{ url_for('members.remove_from_group', group_id=group.id, member_id=m.id) }}" class="d-inline delete-form">
+              <button type="submit" class="btn btn-sm btn-outline-danger">{{ icon('x-lg') }} Убрать</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-center text-muted py-4">В группе пока никого нет</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

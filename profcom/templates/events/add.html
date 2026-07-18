@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Добавить мероприятие{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Добавить мероприятие</h1>
+  <a href="{{ url_for('events.index') }}" class="btn btn-outline-secondary">{{ icon('arrow-left') }} Назад</a>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Название</label>
+          <input type="text" name="name" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Дата</label>
+          <input type="date" name="date" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Протокол (необязательно)</label>
+          <select name="protocol_id" class="form-select">
+            <option value="">-</option>
+            {% for pr in protocols %}
+            <option value="{{ pr.id }}">{{ pr.number }} от {{ pr.date|dt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">PDF-файл (если нет протокола)</label>
+          <input type="file" name="file" class="form-control" accept=".pdf">
+        </div>
+      </div>
+
+      <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Статьи расходов</span>
+          <span class="badge bg-primary fs-6" id="total-expenses">0.00 ₽</span>
+        </div>
+        <div class="card-body">
+          <div id="expenses-container">
+            <div class="row g-2 mb-2 expense-row">
+              <div class="col-7"><input type="text" name="article[]" class="form-control form-control-sm" placeholder="Статья" required></div>
+              <div class="col-4"><input type="number" step="0.01" name="amount[]" class="form-control form-control-sm expense-amount" placeholder="0.00" required></div>
+              <div class="col-1"><button type="button" class="btn btn-outline-danger btn-sm w-100 remove-expense">&times;</button></div>
+            </div>
+          </div>
+          <button type="button" id="add-expense" class="btn btn-sm btn-outline-primary mt-2">{{ icon('plus-lg') }} Статья</button>
+        </div>
+      </div>
+
+      <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Помощники</span>
+        </div>
+        <div class="card-body">
+          <div id="helpers-container">
+            <script type="text/template" id="helper-template">
+              <div class="col-11">
+                <select name="helper_ids[]" class="form-select form-select-sm">
+                  <option value="">Выберите</option>
+                  {% for m in members %}
+                  <option value="{{ m.id }}">{{ m.full_name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-1"><button type="button" class="btn btn-outline-danger btn-sm w-100 remove-helper">&times;</button></div>
+            </script>
+            <div class="row g-2 mb-2 helper-row">
+              <div class="col-11">
+                <select name="helper_ids[]" class="form-select form-select-sm">
+                  <option value="">Выберите</option>
+                  {% for m in members %}
+                  <option value="{{ m.id }}">{{ m.full_name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-1"><button type="button" class="btn btn-outline-danger btn-sm w-100 remove-helper">&times;</button></div>
+            </div>
+          </div>
+          <button type="button" id="add-helper" class="btn btn-sm btn-outline-primary mt-2">{{ icon('plus-lg') }} Помощник</button>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary">{{ icon('floppy') }} Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

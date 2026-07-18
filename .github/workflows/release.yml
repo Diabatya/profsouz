@@ -1,0 +1,74 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*.*"
+      - "v*"
+
+defaults:
+  run:
+    working-directory: profcom
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+        shell: bash
+
+      - name: Build binary with PyInstaller
+        run: pyinstaller profsouz.spec
+        shell: bash
+
+      - name: Package binary
+        run: |
+          cd dist
+          python - <<'PY'
+          import os
+          import platform
+          import zipfile
+
+          exe = 'profsouz.exe' if os.name == 'nt' else 'profsouz'
+          system = platform.system().lower()
+          suffix = {'windows': 'windows', 'darwin': 'macos', 'linux': 'linux'}.get(system, system)
+          zipname = f'profsouz-{suffix}.zip'
+          with zipfile.ZipFile(zipname, 'w', zipfile.ZIP_DEFLATED) as zf:
+              zf.write(exe, exe)
+          print(zipname)
+          PY
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: profsouz-${{ matrix.os }}
+          path: profcom/dist/profsouz-*.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: profsouz-*
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.zip

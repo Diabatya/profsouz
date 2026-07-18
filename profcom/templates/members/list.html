@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon, member_avatar, member_badges, render_pagination, sort_link %}
+{% block title %}Члены профсоюза{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <h1 class="h3 mb-0">Члены профсоюза</h1>
+  <div>
+    <a href="{{ url_for('members.import_template') }}" class="btn btn-outline-success me-1">{{ icon('download') }} Шаблон</a>
+    <a href="{{ url_for('members.import_members') }}" class="btn btn-outline-primary me-1">{{ icon('upload') }} Импорт</a>
+    <a href="{{ url_for('members.add') }}" class="btn btn-success">{{ icon('plus-lg') }} Добавить</a>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-12 col-md-3">
+        <label class="form-label">Поиск</label>
+        <div class="input-group">
+          <span class="input-group-text">{{ icon('search') }}</span>
+          <input type="text" name="search" class="form-control" value="{{ search }}" placeholder="ФИО">
+        </div>
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Отдел</label>
+        <select name="dept" class="form-select">
+          <option value="">Все</option>
+          {% for d in departments %}
+          <option value="{{ d }}" {% if d == selected_dept %}selected{% endif %}>{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Статус</label>
+        <select name="status" class="form-select">
+          <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Активен</option>
+          <option value="not_member" {% if selected_status == 'not_member' %}selected{% endif %}>Не член</option>
+          <option value="" {% if selected_status == '' %}selected{% endif %}>Все</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2">
+        <label class="form-label">Пол</label>
+        <select name="gender" class="form-select">
+          <option value="">Все</option>
+          <option value="male" {% if selected_gender == 'male' %}selected{% endif %}>Мужской</option>
+          <option value="female" {% if selected_gender == 'female' %}selected{% endif %}>Женский</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Должность</label>
+        <select name="position" class="form-select">
+          <option value="">Все</option>
+          {% for p in positions %}
+          <option value="{{ p }}" {% if p == selected_position %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-2">
+        <label class="form-label">На странице</label>
+        <select name="per_page" class="form-select">
+          <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+          <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+          <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+        </select>
+      </div>
+      <input type="hidden" name="view" value="{{ view }}">
+      <div class="col-12 col-md-3">
+        <button type="submit" class="btn btn-primary">{{ icon('filter') }} Применить</button>
+        <a href="{{ url_for('members.index') }}" class="btn btn-outline-secondary">Сброс</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% set view_args = request.args.to_dict() %}
+<div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2">
+  <div style="min-width: 220px;">
+    <input type="text" id="live-search" class="form-control" placeholder="{{ icon('search') }} Быстрый поиск по ФИО" autocomplete="off">
+  </div>
+  <div class="btn-group" role="group" aria-label="Вид">
+    {% set _ = view_args.update({'view': 'table'}) %}
+    <a href="{{ url_for('members.index', **view_args) }}" class="btn btn-outline-secondary {% if view == 'table' %}active{% endif %}">{{ icon('table') }} Таблица</a>
+    {% set _ = view_args.update({'view': 'cards'}) %}
+    <a href="{{ url_for('members.index', **view_args) }}" class="btn btn-outline-secondary {% if view == 'cards' %}active{% endif %}">{{ icon('grid') }} Плитки</a>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('members.bulk') }}" id="bulk-form" class="card mb-3">
+  <div class="card-body d-flex flex-wrap gap-2 align-items-end">
+    <div>
+      <label class="form-label small text-muted mb-1">Массовое действие</label>
+      <select name="action" class="form-select" id="bulk-action">
+        <option value="change_department">Изменить отдел</option>
+        <option value="change_position">Изменить должность</option>
+        <option value="change_gender">Изменить пол</option>
+        <option value="exclude">Исключить</option>
+      </select>
+    </div>
+    <div style="min-width: 220px;" id="bulk-value-wrapper">
+      <label class="form-label small text-muted mb-1">Значение</label>
+      <input type="text" name="value" class="form-control" placeholder="для отдела или должности">
+    </div>
+    <input type="hidden" name="member_ids" id="bulk-ids">
+    <button type="submit" class="btn btn-primary" onclick="return confirm('Применить массовое действие к выбранным членам?')">Применить</button>
+  </div>
+</form>
+
+<div class="card">
+  {% if view == 'table' %}
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th class="text-center" style="width:40px;"><input type="checkbox" class="form-check-input" id="select-all"></th>
+          <th>{{ sort_link('ФИО', 'full_name', sort, order) }}</th>
+          <th>Пол</th>
+          <th>{{ sort_link('Отдел', 'department', sort, order) }}</th>
+          <th>{{ sort_link('Должность', 'position', sort, order) }}</th>
+          <th>{{ sort_link('Дата рождения', 'birth_date', sort, order) }}</th>
+          <th>{{ sort_link('Дата вступления', 'entry_date', sort, order) }}</th>
+          <th>Статус</th>
+          <th class="text-end">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in members %}
+        <tr data-name="{{ m.full_name | lower }}">
+          <td class="text-center"><input type="checkbox" class="form-check-input member-check" value="{{ m.id }}"></td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              {{ member_avatar(m) }}
+              <div>
+                <a href="{{ url_for('members.detail', id=m.id) }}" class="text-decoration-none">{{ m.full_name }}</a>
+                <div class="mt-1">{{ member_badges(m) }}</div>
+              </div>
+            </div>
+          </td>
+          <td>{{ m.gender_display }}</td>
+          <td>{{ m.department }}</td>
+          <td>{{ m.position or '-' }}</td>
+          <td>{{ m.birth_date|dt }}</td>
+          <td>{{ m.entry_date|dt }}</td>
+          <td>
+            {% if m.status == 'active' %}
+            <span class="badge bg-success">Активен</span>
+            {% else %}
+            <span class="badge bg-secondary">Не член</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('members.detail', id=m.id) }}" class="btn btn-sm btn-outline-primary me-1">{{ icon('eye') }}</a>
+            <a href="{{ url_for('members.edit', id=m.id) }}" class="btn btn-sm btn-outline-secondary me-1">{{ icon('pencil') }}</a>
+            {% if m.status == 'active' %}
+            <form method="post" action="{{ url_for('members.delete', id=m.id) }}" class="d-inline delete-form">
+              <button type="submit" class="btn btn-sm btn-outline-danger">{{ icon('trash') }}</button>
+            </form>
+            {% else %}
+            <form method="post" action="{{ url_for('members.restore', id=m.id) }}" class="d-inline">
+              <button type="submit" class="btn btn-sm btn-outline-success">{{ icon('check-lg') }}</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="text-center text-muted py-4">Нет записей</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body">
+    <div class="row g-3">
+      {% for m in members %}
+      <div class="col-md-6 col-lg-4 col-xl-3 member-col" data-name="{{ m.full_name | lower }}">
+        <div class="card h-100 shadow-sm position-relative">
+          <div class="position-absolute top-0 end-0 m-2">
+            <input type="checkbox" class="form-check-input member-check" value="{{ m.id }}">
+          </div>
+          <div class="card-body">
+            <div class="d-flex align-items-center gap-3 mb-3">
+              {{ member_avatar(m, 56) }}
+              <div class="overflow-hidden">
+                <h5 class="card-title text-truncate mb-0"><a href="{{ url_for('members.detail', id=m.id) }}" class="text-decoration-none">{{ m.full_name }}</a></h5>
+                <small class="text-muted text-truncate d-block">{{ m.department }}</small>
+                <div class="mt-1">{{ member_badges(m) }}</div>
+              </div>
+            </div>
+            <p class="card-text mb-1"><span class="text-muted">Должность:</span> {{ m.position or '-' }}</p>
+            <p class="card-text mb-1"><span class="text-muted">Дата рожд.:</span> {{ m.birth_date|dt }}</p>
+            <p class="card-text mb-2"><span class="text-muted">Вступил:</span> {{ m.entry_date|dt }}</p>
+            {% if m.status == 'active' %}
+            <span class="badge bg-success">Активен</span>
+            {% else %}
+            <span class="badge bg-secondary">Не член</span>
+            {% endif %}
+          </div>
+          <div class="card-footer bg-white d-flex justify-content-end gap-2">
+            <a href="{{ url_for('members.detail', id=m.id) }}" class="btn btn-sm btn-outline-primary">{{ icon('eye') }}</a>
+            <a href="{{ url_for('members.edit', id=m.id) }}" class="btn btn-sm btn-outline-secondary">{{ icon('pencil') }}</a>
+            {% if m.status == 'active' %}
+            <form method="post" action="{{ url_for('members.delete', id=m.id) }}" class="d-inline delete-form">
+              <button type="submit" class="btn btn-sm btn-outline-danger">{{ icon('trash') }}</button>
+            </form>
+            {% else %}
+            <form method="post" action="{{ url_for('members.restore', id=m.id) }}" class="d-inline">
+              <button type="submit" class="btn btn-sm btn-outline-success">{{ icon('check-lg') }}</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="col-12">
+        <div class="empty-state">Нет записей</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  <div class="card-footer text-muted small d-flex justify-content-between align-items-center">
+    <span>Всего: {{ pagination.total }}</span>
+    <span>Страница {{ pagination.page }} из {{ pagination.pages or 1 }}</span>
+  </div>
+</div>
+{{ render_pagination(pagination, 'members.index') }}
+{% endblock %}

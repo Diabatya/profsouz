@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon, member_avatar %}
+{% block title %}Состав профкома{% endblock %}
+
+{% block navbar %}
+<nav class="navbar navbar-light bg-white shadow-sm">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand d-flex align-items-center" href="#">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Логотип" class="me-2" style="height:40px;width:auto;">
+      <span class="fw-bold">Профсоюз</span>
+    </a>
+    <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-sm">{{ icon('box-arrow-in-right') }} Вход</a>
+  </div>
+</nav>
+{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+  <h1 class="display-5 fw-bold text-primary mb-2">Состав профкома</h1>
+  <p class="lead text-muted">Первичная профсоюзная организация</p>
+</div>
+
+<div class="container pb-5">
+  <form method="get" class="row g-2 justify-content-center mb-4">
+    <div class="col-auto">
+      <select name="gender" class="form-select">
+        <option value="">Все</option>
+        <option value="male" {% if selected_gender == 'male' %}selected{% endif %}>Мужской</option>
+        <option value="female" {% if selected_gender == 'female' %}selected{% endif %}>Женский</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-outline-primary">{{ icon('filter') }} Фильтр</button>
+    </div>
+  </form>
+  {% for g in groups %}
+  <h2 class="h4 mb-4 border-bottom pb-2">{{ g.name }}</h2>
+  <div class="row g-4 justify-content-center">
+    {% for m in members_by_group[g.id] %}
+    <div class="col-sm-6 col-lg-4 col-xl-3">
+      <div class="card h-100 border-0 shadow text-center p-4">
+        <div class="mx-auto mb-3">
+          {{ member_avatar(m, 120) }}
+        </div>
+        <h5 class="card-title mb-1">{{ m.full_name }}</h5>
+        <p class="text-primary fw-semibold mb-1">{{ m.position or 'Член профкома' }}</p>
+        <p class="text-muted small mb-0">{{ m.department }}</p>
+      </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center text-muted">Состав не заполнен</div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="alert alert-info text-center">Группа «Профком» ещё не создана.</div>
+  {% endfor %}
+</div>
+{% endblock %}

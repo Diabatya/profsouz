@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+{% from 'base.html' import icon %}
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход — Профсоюз</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-light">
+  <div class="container">
+    <div class="card login-card p-4 shadow-lg border-0">
+      <div class="text-center mb-4">
+        <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Логотип" class="rounded-circle mb-3 shadow-sm" style="height:90px;width:90px;object-fit:cover;">
+        <h1 class="logo-text mb-1">Профсоюз</h1>
+        <p class="text-muted">Учёт профсоюзной организации</p>
+      </div>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'danger' if category == 'error' else category }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+      <form method="post">
+        <div class="mb-3">
+          <label class="form-label">Логин</label>
+          <input type="text" name="username" class="form-control" required autofocus>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Пароль</label>
+          <input type="password" name="password" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">{{ icon('box-arrow-in-right') }} Войти</button>
+      </form>
+      <div class="text-center mt-3">
+        <a href="{{ url_for('main.public_profkom') }}" class="text-muted small">Состав профкома</a>
+        <p class="text-center text-muted small mt-2 mb-0">По умолчанию: admin / admin</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

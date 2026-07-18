@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon, member_avatar %}
+{% block title %}Именинники{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <h1 class="h3 mb-0">Именинники</h1>
+  <form method="get" class="d-flex gap-2 align-items-center">
+    <select name="month" class="form-select" onchange="this.form.submit()">
+      {% for m in months %}
+      <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ '%02d'|format(m) }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary">{{ icon('filter') }}</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>ФИО</th>
+          <th>Отдел</th>
+          <th>Дата рождения</th>
+          <th>Возраст</th>
+          <th>Юбилей</th>
+          <th class="text-end">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="{% if row.is_anniversary %}anniversary-row{% endif %}">
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              {{ member_avatar(row.member, 40) }}
+              <span>{% if row.is_anniversary %}{{ icon('cake') }}{% endif %} <a href="{{ url_for('members.detail', id=row.member.id) }}" class="text-decoration-none">{{ row.member.full_name }}</a></span>
+            </div>
+          </td>
+          <td>{{ row.member.department }}</td>
+          <td>{{ row.member.birth_date|dt }}</td>
+          <td>{{ row.age }}</td>
+          <td>
+            {% if row.is_anniversary %}
+            <span class="badge bg-danger">{{ row.age }} лет</span>
+            {% else %}
+            <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            {% if row.is_anniversary %}
+            <a href="{{ url_for('payouts.add', member_id=row.member.id, amount=row.amount) }}" class="btn btn-sm btn-success">{{ icon('cash') }} Выплатить</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-4">В этом месяце нет именинников</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

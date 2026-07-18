@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Flask / app
+database.db
+*.db.bak
+app.log
+uploads/
+
+# PyInstaller
+*.spec
+!profcom/profsouz.spec
+*.exe
+*.app
+*.dmg
+*.pkg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Alembic / runtime
+migrations/versions/__pycache__/
