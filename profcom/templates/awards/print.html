@@ -5,8 +5,9 @@
   <title>{{ template.title }}</title>
   <style>
     @media print {
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       body { margin: 0; padding: 0; }
-      .page { page-break-after: always; width: 210mm; min-height: 297mm; box-sizing: border-box; margin: 0 auto; }
+      .page { page-break-after: always; width: 210mm; min-height: 297mm; box-sizing: border-box; margin: 0 auto; overflow: hidden; }
       .page:last-child { page-break-after: auto; }
       .no-print { display: none; }
     }
