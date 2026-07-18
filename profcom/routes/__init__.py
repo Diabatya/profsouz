@@ -1,4 +1,5 @@
 from .auth import bp as auth_bp
+from .awards import bp as awards_bp
 from .birthdays import bp as birthdays_bp
 from .events import bp as events_bp
 from .finances import bp as finances_bp
@@ -15,6 +16,7 @@ def register_blueprints(app):
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(members_bp)
+    app.register_blueprint(awards_bp)
     app.register_blueprint(payouts_bp)
     app.register_blueprint(protocols_bp)
     app.register_blueprint(events_bp)

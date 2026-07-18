@@ -5,7 +5,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <h1 class="h3 mb-0">Книга учета ТМЦ</h1>
   <div>
-    <a href="{{ url_for('inventory.export') }}?q={{ search }}&status={{ status }}" class="btn btn-outline-success me-1">{{ icon('file-earmark-excel') }} Excel</a>
+    <a href="{{ url_for('inventory.export') }}?q={{ search }}&status={{ status }}&alert={{ alert }}" class="btn btn-outline-success me-1">{{ icon('file-earmark-excel') }} Excel</a>
     <a href="{{ url_for('inventory.add') }}" class="btn btn-success">{{ icon('plus-lg') }} Добавить</a>
   </div>
 </div>
@@ -13,14 +13,21 @@
 <div class="card mb-4">
   <div class="card-body">
     <form method="get" class="row g-3 align-items-end">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <input type="text" name="q" class="form-control" value="{{ search }}" placeholder="Поиск по номеру или наименованию">
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <select name="status" class="form-select">
           <option value="">Все статусы</option>
           <option value="active" {% if status == 'active' %}selected{% endif %}>На хранении</option>
           <option value="written_off" {% if status == 'written_off' %}selected{% endif %}>Списано</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select name="alert" class="form-select">
+          <option value="">Все</option>
+          <option value="warranty" {% if alert == 'warranty' %}selected{% endif %}>Гарантия истекает/истекла</option>
+          <option value="write_off" {% if alert == 'write_off' %}selected{% endif %}>Срок списания истек</option>
         </select>
       </div>
       <div class="col-md-2">
@@ -38,7 +45,8 @@
         <th>{{ sort_link('Наименование', 'name', sort, order) }}</th>
         <th>Кол-во</th>
         <th>{{ sort_link('Дата поступления', 'acquisition_date', sort, order) }}</th>
-        <th>Срок хранения</th>
+        <th>Гарантия до</th>
+        <th>Списать до</th>
         <th>Место</th>
         <th>Статус</th>
         <th>Ответственный</th>
@@ -47,15 +55,21 @@
     </thead>
     <tbody>
       {% for item in items %}
-      <tr class="{% if item.storage_until and item.storage_until < today() %}table-warning{% endif %}">
+      <tr class="{% if item.warranty_until and item.warranty_until < today() %}table-warning{% elif item.write_off_until and item.write_off_until < today() %}table-warning{% endif %}">
         <td>{{ item.inventory_number }}</td>
         <td><a href="{{ url_for('inventory.edit', id=item.id) }}">{{ item.name }}</a></td>
         <td>{{ item.quantity|money }} {{ item.unit }}</td>
         <td>{{ item.acquisition_date|dt if item.acquisition_date else '-' }}</td>
         <td>
-          {% if item.storage_until %}
-          {{ item.storage_until|dt }}
-          {% if item.storage_until < today() %}<span class="badge bg-danger">просрочено</span>{% endif %}
+          {% if item.warranty_until %}
+          {{ item.warranty_until|dt }}
+          {% if item.warranty_until < today() %}<span class="badge bg-warning text-dark">истекла</span>{% elif (item.warranty_until - today()).days <= 30 %}<span class="badge bg-warning text-dark">{{ (item.warranty_until - today()).days }} дн.</span>{% endif %}
+          {% else %}-{% endif %}
+        </td>
+        <td>
+          {% if item.write_off_until %}
+          {{ item.write_off_until|dt }}
+          {% if item.write_off_until < today() %}<span class="badge bg-danger">просрочено</span>{% endif %}
           {% else %}-{% endif %}
         </td>
         <td>{{ item.location or '-' }}</td>
@@ -69,7 +83,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="9" class="text-center text-muted py-4">Нет записей</td></tr>
+      <tr><td colspan="10" class="text-center text-muted py-4">Нет записей</td></tr>
       {% endfor %}
     </tbody>
   </table>

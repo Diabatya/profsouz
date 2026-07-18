@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Массовая печать наград{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Массовая печать наград</h1>
+  <a href="{{ url_for('awards.index') }}" class="btn btn-outline-secondary">Шаблоны</a>
+</div>
+
+<form method="post" action="{{ url_for('awards.mass_issue') }}" id="massForm">
+<div class="card mb-4">
+  <div class="card-body row g-3 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label">Шаблон</label>
+      <select name="template_id" class="form-select" required>
+        <option value="">Выберите шаблон</option>
+        {% for t in templates %}
+        <option value="{{ t.id }}">{{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Дата вручения</label>
+      <input type="date" name="issued_at" class="form-control" value="{{ today()|iso_date }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Поиск по ФИО</label>
+      <input type="text" id="memberSearch" class="form-control" placeholder="Начните вводить фамилию">
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-primary w-100">{{ icon('printer') }} Печать</button>
+    </div>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle" id="membersTable">
+    <thead>
+      <tr>
+        <th><input type="checkbox" class="form-check-input" id="checkAll"></th>
+        <th>ФИО</th>
+        <th>Цех/отдел</th>
+        <th>Должность</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in members %}
+      <tr class="member-row">
+        <td><input type="checkbox" name="member_ids" value="{{ m.id }}" class="form-check-input row-check"></td>
+        <td>{{ m.full_name }}</td>
+        <td>{{ m.department or '-' }}</td>
+        <td>{{ m.position or '-' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="text-center text-muted py-4">Нет активных членов</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</form>
+
+<script>
+(function(){
+  const search = document.getElementById('memberSearch');
+  const rows = document.querySelectorAll('.member-row');
+  search.addEventListener('input', function(){
+    const q = this.value.toLowerCase();
+    rows.forEach(row => {
+      const text = row.innerText.toLowerCase();
+      row.style.display = text.includes(q) ? '' : 'none';
+    });
+  });
+  document.getElementById('checkAll').addEventListener('change', function(){
+    document.querySelectorAll('.row-check').forEach(cb => cb.checked = this.checked);
+  });
+})();
+</script>
+{% endblock %}

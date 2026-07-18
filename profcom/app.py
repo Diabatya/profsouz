@@ -7,7 +7,7 @@ from flask import Flask, g, redirect, session, url_for
 from flask_migrate import Migrate
 
 import config
-from models import Admin, AnniversarySetting, Group, PayoutType, db
+from models import Admin, AnniversarySetting, DocumentTemplate, Group, PayoutType, db
 from utils import login_required
 
 
@@ -128,6 +128,37 @@ def seed_data():
 
     if not Group.query.filter_by(name="Профком", type="profkom").first():
         db.session.add(Group(name="Профком", type="profkom"))
+
+    default_templates = [
+        {
+            "name": "Грамота",
+            "type": "award",
+            "title": "Грамота профсоюза",
+            "body": """<div style="text-align:center; padding: 60px 40px; border: 8px double #c00; height: 100%; box-sizing: border-box;">
+  <h1 style="font-size: 42px; color: #c00; margin-bottom: 40px;">Грамота</h1>
+  <p style="font-size: 20px;">Награждается</p>
+  <h2 style="font-size: 32px; margin: 30px 0; text-decoration: underline;">{{ member.full_name }}</h2>
+  <p style="font-size: 18px; line-height: 1.6;">за активное участие в жизни профсоюзной организации,<br>добросовестный труд и высокий профессионализм.</p>
+  <p style="margin-top: 60px; font-size: 16px;">Дата выдачи: {{ issued_at|dt }}</p>
+</div>""",
+        },
+        {
+            "name": "Благодарственное письмо",
+            "type": "letter",
+            "title": "Благодарственное письмо",
+            "body": """<div style="padding: 60px 50px; font-size: 18px; line-height: 1.6;">
+  <p style="text-align: right;">{{ today|dt }}</p>
+  <h2 style="text-align: center; margin-bottom: 40px;">Благодарственное письмо</h2>
+  <p>Выражаем искреннюю благодарность</p>
+  <p style="font-weight: bold; font-size: 22px; margin: 20px 0;">{{ member.full_name }}</p>
+  <p>за активное участие в работе профсоюзной организации, инициативу и поддержку коллег.</p>
+  <p style="margin-top: 60px;">Председатель профкома _________________</p>
+</div>""",
+        },
+    ]
+    for tpl in default_templates:
+        if not DocumentTemplate.query.filter_by(name=tpl["name"]).first():
+            db.session.add(DocumentTemplate(**tpl))
 
     db.session.commit()
 

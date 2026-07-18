@@ -315,7 +315,8 @@ class InventoryItem(db.Model):
     quantity = db.Column(db.Numeric(10, 2), default=1)
     unit = db.Column(db.String(20), default="шт.")
     acquisition_date = db.Column(db.Date, nullable=True)
-    storage_term_years = db.Column(db.Integer, default=0)
+    warranty_term_years = db.Column(db.Integer, default=0)
+    write_off_term_years = db.Column(db.Integer, default=0)
     location = db.Column(db.String(200), nullable=True)
     responsible_member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=True)
     status = db.Column(db.String(20), default="active")
@@ -323,18 +324,27 @@ class InventoryItem(db.Model):
 
     responsible = db.relationship("Member", backref="inventory_items")
 
-    @property
-    def storage_until(self):
+    def _add_years(self, years):
         from datetime import timedelta
 
-        if self.acquisition_date and self.storage_term_years:
+        if self.acquisition_date and years:
             try:
-                return self.acquisition_date.replace(
-                    year=self.acquisition_date.year + self.storage_term_years
-                )
+                return self.acquisition_date.replace(year=self.acquisition_date.year + years)
             except ValueError:
-                return self.acquisition_date + timedelta(days=365 * self.storage_term_years)
+                return self.acquisition_date + timedelta(days=365 * years)
         return None
+
+    @property
+    def warranty_until(self):
+        return self._add_years(self.warranty_term_years)
+
+    @property
+    def write_off_until(self):
+        return self._add_years(self.write_off_term_years)
+
+    @property
+    def storage_until(self):
+        return self.write_off_until
 
 
 class UnionOfficer(db.Model):
@@ -346,3 +356,32 @@ class UnionOfficer(db.Model):
     active = db.Column(db.Boolean, default=True)
 
     member = db.relationship("Member", backref="officer_roles")
+
+
+class DocumentTemplate(db.Model):
+    __tablename__ = "document_template"
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String(30), nullable=False, default="award")
+    name = db.Column(db.String(100), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    order = db.Column(db.Integer, default=0)
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
+    def render(self, context):
+        from flask import current_app
+
+        return current_app.jinja_env.from_string(self.body).render(context)
+
+
+class MemberAward(db.Model):
+    __tablename__ = "member_award"
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
+    template_id = db.Column(db.Integer, db.ForeignKey("document_template.id"), nullable=False)
+    issued_at = db.Column(db.Date, nullable=False)
+    note = db.Column(db.String(300), nullable=True)
+
+    member = db.relationship("Member", backref="awards")
+    template = db.relationship("DocumentTemplate")

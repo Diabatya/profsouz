@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{{ template.title }}</title>
+  <style>
+    @media print {
+      body { margin: 0; padding: 0; }
+      .page { page-break-after: always; width: 210mm; min-height: 297mm; box-sizing: border-box; margin: 0 auto; }
+      .page:last-child { page-break-after: auto; }
+      .no-print { display: none; }
+    }
+    @media screen {
+      body { background: #f5f5f5; padding: 20px; font-family: "Times New Roman", Times, serif; }
+      .page { background: #fff; width: 210mm; min-height: 297mm; margin: 20px auto; box-shadow: 0 0 8px rgba(0,0,0,0.15); padding: 20mm; box-sizing: border-box; }
+    }
+  </style>
+</head>
+<body>
+<div class="no-print" style="text-align:center; margin-bottom: 1rem;">
+  <button onclick="window.print()" class="btn btn-primary btn-lg">Печать</button>
+  <a href="{{ url_for('awards.mass') }}" class="btn btn-secondary btn-lg">Назад</a>
+</div>
+{% for page in pages %}
+<div class="page">
+  {{ page|safe }}
+</div>
+{% endfor %}
+</body>
+</html>
