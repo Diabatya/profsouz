@@ -31,7 +31,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = (
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
-migrate = Migrate(app, db)
+migrate = Migrate(app, db, directory=resource_path("migrations"))
 
 log_path = os.path.join(base_dir, "app.log")
 file_handler = logging.FileHandler(log_path, encoding="utf-8")
