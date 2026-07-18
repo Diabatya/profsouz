@@ -34,6 +34,9 @@
           <li class="list-group-item text-muted">Нет типов выплат</li>
           {% endfor %}
         </ul>
+        <div class="mt-3">
+          <a href="{{ url_for('settings.payout_categories') }}" class="btn btn-outline-primary btn-sm">{{ icon('journal-text') }} Категории выплат</a>
+        </div>
       </div>
     </div>
   </div>

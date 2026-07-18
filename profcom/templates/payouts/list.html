@@ -74,6 +74,7 @@
           <th>{{ sort_link('Дата', 'date', sort, order) }}</th>
           <th>Член</th>
           <th>Тип</th>
+          <th>Категория</th>
           <th>Протокол</th>
           <th>{{ sort_link('Сумма', 'amount', sort, order) }}</th>
           <th>Подписана</th>
@@ -86,6 +87,7 @@
           <td>{{ p.date|dt }}</td>
           <td>{{ p.member.full_name }}</td>
           <td>{{ p.type.name }}</td>
+          <td>{{ p.category.name or '-' }}</td>
           <td>{% if p.protocol %}<a href="{{ url_for('protocols.detail', id=p.protocol.id) }}">{{ p.protocol.number }}</a>{% else %}-{% endif %}</td>
           <td>{{ p.amount|money }} ₽</td>
           <td>{% if p.signed %}<span class="badge bg-success">{{ icon('check-lg') }}</span>{% else %}<span class="badge bg-secondary">Нет</span>{% endif %}</td>
@@ -97,7 +99,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="text-center text-muted py-4">Нет выплат</td></tr>
+        <tr><td colspan="8" class="text-center text-muted py-4">Нет выплат</td></tr>
         {% endfor %}
       </tbody>
     </table>

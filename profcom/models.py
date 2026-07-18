@@ -148,6 +148,18 @@ class PayoutType(db.Model):
     name = db.Column(db.String(100), unique=True, nullable=False)
     default_amount = db.Column(db.Numeric(10, 2), default=0)
 
+    categories = db.relationship(
+        "PayoutCategory", backref="payout_type", lazy="dynamic", cascade="all, delete-orphan"
+    )
+
+
+class PayoutCategory(db.Model):
+    __tablename__ = "payout_category"
+    id = db.Column(db.Integer, primary_key=True)
+    payout_type_id = db.Column(db.Integer, db.ForeignKey("payout_type.id"), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    amount = db.Column(db.Numeric(10, 2), default=0)
+
 
 class AnniversarySetting(db.Model):
     __tablename__ = "anniversary_setting"
@@ -172,12 +184,14 @@ class Payout(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
     type_id = db.Column(db.Integer, db.ForeignKey("payout_type.id"), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey("payout_category.id"), nullable=True)
     protocol_id = db.Column(db.Integer, db.ForeignKey("protocol.id"), nullable=True)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     date = db.Column(db.Date, nullable=False, default=date.today)
     signed = db.Column(db.Boolean, default=False)
 
     type = db.relationship("PayoutType", backref="payouts")
+    category = db.relationship("PayoutCategory", backref="payouts")
 
 
 class Event(db.Model):

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Категории выплат{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Категории выплат</h1>
+  <a href="{{ url_for('settings.index') }}" class="btn btn-outline-secondary">Назад к настройкам</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Добавить категорию</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('settings.add_payout_category') }}" class="row g-2">
+      <div class="col-md-4">
+        <select name="payout_type_id" class="form-select" required>
+          <option value="">Тип выплаты</option>
+          {% for t in types %}
+          <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4"><input type="text" name="name" class="form-control" placeholder="Категория" required></div>
+      <div class="col-md-3"><input type="number" step="0.01" name="amount" class="form-control" placeholder="Сумма" value="0"></div>
+      <div class="col-md-1"><button type="submit" class="btn btn-success w-100">{{ icon('plus-lg') }}</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="row g-4">
+  {% for t in types %}
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between">
+        <span>{{ t.name }}</span>
+        <span class="text-muted">{{ t.default_amount }} ₽</span>
+      </div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          {% for c in categories if c.payout_type_id == t.id %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>{{ c.name }} — <strong>{{ c.amount }} ₽</strong></span>
+            <form method="post" action="{{ url_for('settings.delete_payout_category', id=c.id) }}" class="delete-form">
+              <button type="submit" class="btn btn-sm btn-outline-danger">{{ icon('trash') }}</button>
+            </form>
+          </li>
+          {% else %}
+          <li class="list-group-item text-muted">Нет категорий</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

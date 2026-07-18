@@ -4,7 +4,7 @@ import shutil
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
 import config
-from models import Admin, AnniversarySetting, Dictionary, PayoutType, db
+from models import Admin, AnniversarySetting, Dictionary, PayoutCategory, PayoutType, db
 from utils import login_required, parse_decimal
 
 bp = Blueprint("settings", __name__, url_prefix="/settings")
@@ -193,3 +193,40 @@ def delete_dictionary(id):
     db.session.commit()
     flash("Значение удалено", "success")
     return redirect(url_for("settings.dictionaries"))
+
+
+@bp.route("/payout_categories")
+@login_required
+def payout_categories():
+    types = PayoutType.query.order_by(PayoutType.name).all()
+    categories = PayoutCategory.query.order_by(PayoutCategory.name).all()
+    return render_template("settings/payout_categories.html", types=types, categories=categories)
+
+
+@bp.route("/payout_categories/add", methods=["POST"])
+@login_required
+def add_payout_category():
+    payout_type_id = request.form.get("payout_type_id", type=int)
+    name = request.form.get("name", "").strip()
+    amount = parse_decimal(request.form.get("amount", "0"))
+    ptype = db.session.get(PayoutType, payout_type_id) if payout_type_id else None
+    if not ptype or not name:
+        flash("Укажите тип выплаты и название категории", "danger")
+    else:
+        if PayoutCategory.query.filter_by(payout_type_id=ptype.id, name=name).first():
+            flash("Такая категория уже есть", "warning")
+        else:
+            db.session.add(PayoutCategory(payout_type_id=ptype.id, name=name, amount=amount))
+            db.session.commit()
+            flash("Категория выплат добавлена", "success")
+    return redirect(url_for("settings.payout_categories"))
+
+
+@bp.route("/payout_categories/<int:id>/delete", methods=["POST"])
+@login_required
+def delete_payout_category(id):
+    category = db.session.get(PayoutCategory, id) or abort(404)
+    db.session.delete(category)
+    db.session.commit()
+    flash("Категория выплат удалена", "success")
+    return redirect(url_for("settings.payout_categories"))

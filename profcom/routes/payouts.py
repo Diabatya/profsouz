@@ -1,7 +1,7 @@
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from sqlalchemy import func
 
-from models import Member, Payout, PayoutType, Protocol, db
+from models import Member, Payout, PayoutCategory, PayoutType, Protocol, db
 from utils import apply_sort, login_required, parse_date, parse_decimal, period_bounds
 
 bp = Blueprint("payouts", __name__, url_prefix="/payouts")
@@ -55,6 +55,13 @@ def index():
     )
 
 
+def _categories_data():
+    return [
+        {"id": c.id, "type_id": c.payout_type_id, "name": c.name, "amount": float(c.amount)}
+        for c in PayoutCategory.query.order_by(PayoutCategory.name).all()
+    ]
+
+
 @bp.route("/add", methods=["GET", "POST"])
 @login_required
 def add():
@@ -63,18 +70,27 @@ def add():
     types = PayoutType.query.order_by(PayoutType.name).all()
     members = Member.query.filter_by(status="active").order_by(Member.full_name).all()
     protocols = Protocol.query.order_by(Protocol.date.desc()).all()
+    categories = _categories_data()
 
     if request.method == "POST":
         member_id = request.form.get("member_id", type=int)
         type_id = request.form.get("type_id", type=int)
+        category_id = request.form.get("category_id") or None
+        category_id = int(category_id) if category_id else None
         protocol_id = request.form.get("protocol_id") or None
         protocol_id = int(protocol_id) if protocol_id else None
-        amount = parse_decimal(request.form.get("amount", "0"))
         pdate = parse_date(request.form.get("date"))
         signed = bool(request.form.get("signed"))
 
         member = db.session.get(Member, member_id) if member_id else None
         ptype = db.session.get(PayoutType, type_id) if type_id else None
+        category = db.session.get(PayoutCategory, category_id) if category_id else None
+
+        amount = parse_decimal(request.form.get("amount", "0"))
+        if not request.form.get("amount") and category:
+            amount = category.amount
+        elif not request.form.get("amount") and ptype:
+            amount = ptype.default_amount
 
         if not member or not ptype or not pdate:
             flash("Заполните все обязательные поля", "danger")
@@ -83,9 +99,11 @@ def add():
                 types=types,
                 members=members,
                 protocols=protocols,
+                categories=categories,
                 pre_member_id=member_id or pre_member_id,
                 pre_amount=pre_amount,
                 pre_type=type_id,
+                pre_category=category_id,
             )
         if not member.is_active:
             flash("Выплаты возможны только активным членам", "danger")
@@ -94,14 +112,17 @@ def add():
                 types=types,
                 members=members,
                 protocols=protocols,
+                categories=categories,
                 pre_member_id=member_id,
                 pre_amount=pre_amount,
                 pre_type=type_id,
+                pre_category=category_id,
             )
 
         payout = Payout(
             member_id=member.id,
             type_id=ptype.id,
+            category_id=category.id if category else None,
             protocol_id=protocol_id,
             amount=amount,
             date=pdate,
@@ -117,9 +138,11 @@ def add():
         types=types,
         members=members,
         protocols=protocols,
+        categories=categories,
         pre_member_id=pre_member_id,
         pre_amount=pre_amount,
         pre_type=None,
+        pre_category=None,
     )
 
 
@@ -131,15 +154,26 @@ def edit(id):
     members = Member.query.filter_by(status="active").order_by(Member.full_name).all()
     protocols = Protocol.query.order_by(Protocol.date.desc()).all()
 
+    categories = _categories_data()
+
     if request.method == "POST":
         type_id = request.form.get("type_id", type=int)
+        category_id = request.form.get("category_id") or None
+        category_id = int(category_id) if category_id else None
         protocol_id = request.form.get("protocol_id") or None
         protocol_id = int(protocol_id) if protocol_id else None
-        amount = parse_decimal(request.form.get("amount", "0"))
         pdate = parse_date(request.form.get("date"))
         signed = bool(request.form.get("signed"))
 
         ptype = db.session.get(PayoutType, type_id) if type_id else None
+        category = db.session.get(PayoutCategory, category_id) if category_id else None
+
+        amount = parse_decimal(request.form.get("amount", "0"))
+        if not request.form.get("amount") and category:
+            amount = category.amount
+        elif not request.form.get("amount") and ptype:
+            amount = ptype.default_amount
+
         if not ptype or not pdate:
             flash("Заполните обязательные поля", "danger")
             return render_template(
@@ -148,9 +182,11 @@ def edit(id):
                 types=types,
                 members=members,
                 protocols=protocols,
+                categories=categories,
             )
 
         payout.type_id = ptype.id
+        payout.category_id = category.id if category else None
         payout.protocol_id = protocol_id
         payout.amount = amount
         payout.date = pdate
@@ -160,7 +196,12 @@ def edit(id):
         return redirect(url_for("payouts.index"))
 
     return render_template(
-        "payouts/edit.html", payout=payout, types=types, members=members, protocols=protocols
+        "payouts/edit.html",
+        payout=payout,
+        types=types,
+        members=members,
+        protocols=protocols,
+        categories=categories,
     )
 
 
@@ -188,7 +229,7 @@ def export():
         q = q.filter(Payout.date <= date_to)
 
     payouts = q.order_by(Payout.date.desc()).all()
-    headers = ["Дата", "Член", "Тип выплаты", "Протокол", "Сумма", "Подписана"]
+    headers = ["Дата", "Член", "Тип выплаты", "Категория", "Протокол", "Сумма", "Подписана"]
     rows = []
     for p in payouts:
         protocol = p.protocol.number if p.protocol else ""
@@ -197,6 +238,7 @@ def export():
                 p.date.strftime("%d.%m.%Y"),
                 p.member.full_name,
                 p.type.name,
+                p.category.name if p.category else "",
                 protocol,
                 float(p.amount),
                 "Да" if p.signed else "Нет",

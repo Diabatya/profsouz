@@ -9,11 +9,45 @@
     }
   }
 
-  // Autofill amount when payout type changes
+  // Autofill amount when payout type / category changes
   ready(function(){
     var typeSelect = document.getElementById('type_id');
     var amountInput = document.getElementById('amount');
-    if(typeSelect && amountInput){
+    var categorySelect = document.getElementById('category_id');
+    if(typeSelect && amountInput && categorySelect && window.PAYOUT_CATEGORIES){
+      var categories = window.PAYOUT_CATEGORIES;
+      function getDataset(el){ return el && el.options[el.selectedIndex] ? el.options[el.selectedIndex].dataset : {}; }
+      function updateCategories(){
+        var typeId = parseInt(typeSelect.value) || 0;
+        var selectedCat = parseInt(categorySelect.dataset.selectedCategory) || 0;
+        categorySelect.innerHTML = '<option value="">-</option>';
+        categories.forEach(function(c){
+          if(c.type_id == typeId){
+            var opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            opt.dataset.amount = c.amount;
+            if(c.id == selectedCat) opt.selected = true;
+            categorySelect.appendChild(opt);
+          }
+        });
+      }
+      function updateAmount(){
+        var catOption = categorySelect.options[categorySelect.selectedIndex];
+        if(catOption && catOption.value && catOption.dataset.amount){
+          amountInput.value = catOption.dataset.amount;
+        } else {
+          var typeOption = typeSelect.options[typeSelect.selectedIndex];
+          if(typeOption && typeOption.dataset.amount) amountInput.value = typeOption.dataset.amount;
+        }
+      }
+      typeSelect.addEventListener('change', function(){
+        updateCategories();
+        updateAmount();
+      });
+      categorySelect.addEventListener('change', updateAmount);
+      updateCategories();
+    } else if(typeSelect && amountInput){
       typeSelect.addEventListener('change', function(){
         var option = typeSelect.options[typeSelect.selectedIndex];
         if(option && option.dataset.amount){
