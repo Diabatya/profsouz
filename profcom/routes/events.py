@@ -4,7 +4,14 @@ from uuid import uuid4
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 
 from models import Event, EventExpense, Member, Protocol, db
-from utils import apply_sort, login_required, parse_date, parse_decimal
+from utils import (
+    apply_sort,
+    dictionary_values,
+    login_required,
+    parse_date,
+    parse_decimal,
+    save_dictionary_value,
+)
 
 bp = Blueprint("events", __name__, url_prefix="/events")
 
@@ -38,6 +45,7 @@ def index():
 def add():
     protocols = Protocol.query.order_by(Protocol.date.desc()).all()
     members = Member.query.filter_by(status="active").order_by(Member.full_name).all()
+    article_options = dictionary_values("event_article")
 
     if request.method == "POST":
         name = request.form.get("name", "").strip()
@@ -48,7 +56,12 @@ def add():
 
         if not name or not edate:
             flash("Укажите название и дату мероприятия", "danger")
-            return render_template("events/add.html", protocols=protocols, members=members)
+            return render_template(
+                "events/add.html",
+                protocols=protocols,
+                members=members,
+                article_options=article_options,
+            )
 
         file_path = None
         if file and allowed_pdf(file.filename):
@@ -62,14 +75,13 @@ def add():
         db.session.add(event)
         db.session.flush()
 
-        articles = request.form.getlist("article[]")
-        amounts = request.form.getlist("amount[]")
-        for article, amount in zip(articles, amounts, strict=False):
+        posted_articles = request.form.getlist("article[]")
+        posted_amounts = request.form.getlist("amount[]")
+        for article, amount in zip(posted_articles, posted_amounts, strict=False):
             if article.strip():
+                article = save_dictionary_value("event_article", article.strip()) or article.strip()
                 db.session.add(
-                    EventExpense(
-                        event_id=event.id, article=article.strip(), amount=parse_decimal(amount)
-                    )
+                    EventExpense(event_id=event.id, article=article, amount=parse_decimal(amount))
                 )
 
         helper_ids = request.form.getlist("helper_ids[]")
@@ -83,7 +95,9 @@ def add():
         flash("Мероприятие добавлено", "success")
         return redirect(url_for("events.index"))
 
-    return render_template("events/add.html", protocols=protocols, members=members)
+    return render_template(
+        "events/add.html", protocols=protocols, members=members, article_options=article_options
+    )
 
 
 @bp.route("/<int:id>")

@@ -81,6 +81,18 @@
 <div class="row g-4 mt-2">
   <div class="col-lg-6">
     <div class="card">
+      <div class="card-header">Справочники</div>
+      <div class="card-body">
+        <p class="text-muted">Управление списками для автозаполнения: отделы, должности, статьи финансов, категории, статьи расходов мероприятий.</p>
+        <a href="{{ url_for('settings.dictionaries') }}" class="btn btn-outline-primary">{{ icon('journal-text') }} Открыть справочники</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-2">
+  <div class="col-lg-6">
+    <div class="card">
       <div class="card-header">Смена пароля</div>
       <div class="card-body">
         <form method="post" action="{{ url_for('settings.change_password') }}">

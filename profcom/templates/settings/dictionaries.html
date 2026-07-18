@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Справочники{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Справочники</h1>
+  <a href="{{ url_for('settings.index') }}" class="btn btn-outline-secondary">Назад к настройкам</a>
+</div>
+
+<div class="row g-4">
+  {% for dtype, label in types.items() %}
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">{{ label }}</div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('settings.add_dictionary', type=dtype) }}" class="input-group mb-3">
+          <input type="text" name="value" class="form-control" placeholder="Новое значение" required>
+          <button type="submit" class="btn btn-success">{{ icon('plus-lg') }}</button>
+        </form>
+        <ul class="list-group list-group-flush">
+          {% for item in grouped.get(dtype, []) %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ item.value }}
+            <form method="post" action="{{ url_for('settings.delete_dictionary', id=item.id) }}" class="delete-form">
+              <button type="submit" class="btn btn-sm btn-outline-danger">{{ icon('trash') }}</button>
+            </form>
+          </li>
+          {% else %}
+          <li class="list-group-item text-muted">Пока нет значений</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

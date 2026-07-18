@@ -4,7 +4,7 @@ import shutil
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
 import config
-from models import Admin, AnniversarySetting, PayoutType, db
+from models import Admin, AnniversarySetting, Dictionary, PayoutType, db
 from utils import login_required, parse_decimal
 
 bp = Blueprint("settings", __name__, url_prefix="/settings")
@@ -148,3 +148,48 @@ def restore():
     file.save(db_path)
     flash("База данных восстановлена. Рекомендуется перезапустить приложение.", "success")
     return redirect(url_for("settings.index"))
+
+
+DICTIONARY_TYPES = {
+    "department": "Отделы",
+    "position": "Должности",
+    "finance_description": "Статьи финансов",
+    "finance_category": "Категории финансов",
+    "event_article": "Статьи расходов на мероприятия",
+}
+
+
+@bp.route("/dictionaries")
+@login_required
+def dictionaries():
+    items = Dictionary.query.order_by(Dictionary.type, Dictionary.value).all()
+    grouped = {}
+    for item in items:
+        grouped.setdefault(item.type, []).append(item)
+    return render_template("settings/dictionaries.html", grouped=grouped, types=DICTIONARY_TYPES)
+
+
+@bp.route("/dictionaries/<type>/add", methods=["POST"])
+@login_required
+def add_dictionary(type):
+    value = request.form.get("value", "").strip()
+    if value:
+        if not Dictionary.query.filter_by(type=type, value=value).first():
+            db.session.add(Dictionary(type=type, value=value))
+            db.session.commit()
+            flash("Значение добавлено", "success")
+        else:
+            flash("Такое значение уже есть", "warning")
+    else:
+        flash("Введите значение", "danger")
+    return redirect(url_for("settings.dictionaries"))
+
+
+@bp.route("/dictionaries/<int:id>/delete", methods=["POST"])
+@login_required
+def delete_dictionary(id):
+    item = db.session.get(Dictionary, id) or abort(404)
+    db.session.delete(item)
+    db.session.commit()
+    flash("Значение удалено", "success")
+    return redirect(url_for("settings.dictionaries"))

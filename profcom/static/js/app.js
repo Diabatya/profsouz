@@ -43,7 +43,7 @@
         var row = document.createElement('div');
         row.className = 'row g-2 mb-2 expense-row';
         row.innerHTML =
-          '<div class="col-7"><input type="text" name="article[]" class="form-control form-control-sm" placeholder="Статья" required></div>' +
+          '<div class="col-7"><input type="text" name="article[]" class="form-control form-control-sm" list="event-articles" placeholder="Статья" required></div>' +
           '<div class="col-4"><input type="number" step="0.01" name="amount[]" class="form-control form-control-sm expense-amount" placeholder="0.00" required></div>' +
           '<div class="col-1"><button type="button" class="btn btn-outline-danger btn-sm w-100 remove-expense">&times;</button></div>';
         container.appendChild(row);

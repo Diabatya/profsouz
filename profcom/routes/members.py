@@ -19,7 +19,14 @@ from flask import (
 from openpyxl import load_workbook
 
 from models import Group, Member, MemberStatusHistory, db
-from utils import apply_sort, login_required, parse_date
+from utils import (
+    apply_sort,
+    dictionary_values,
+    login_required,
+    parse_date,
+    save_dictionary_value,
+    title_name,
+)
 
 bp = Blueprint("members", __name__, url_prefix="/members")
 
@@ -117,6 +124,8 @@ def index():
         pagination=pagination,
         departments=departments,
         positions=positions,
+        department_choices=dictionary_values("department"),
+        position_choices=dictionary_values("position"),
         selected_dept=dept,
         selected_status=status,
         selected_position=position,
@@ -136,16 +145,25 @@ def add():
 
     form = MemberForm()
     if form.validate_on_submit():
-        full_name = form.full_name.data.strip()
-        department = form.department.data.strip()
+        full_name = title_name(form.full_name.data)
+        department = (
+            save_dictionary_value("department", form.department.data.strip())
+            or form.department.data.strip()
+        )
         position = (form.position.data or "").strip() or None
+        position = save_dictionary_value("position", position) or position
         gender = form.gender.data
         birth_date = parse_date(form.birth_date.data)
         entry_date = parse_date(form.entry_date.data)
 
         if not birth_date or not entry_date:
             flash("Неверный формат даты", "danger")
-            return render_template("members/add.html", form=form)
+            return render_template(
+                "members/add.html",
+                form=form,
+                department_choices=dictionary_values("department"),
+                position_choices=dictionary_values("position"),
+            )
 
         member = Member(
             full_name=full_name,
@@ -172,7 +190,12 @@ def add():
         db.session.commit()
         flash("Член профсоюза добавлен", "success")
         return redirect(url_for("members.index"))
-    return render_template("members/add.html", form=form)
+    return render_template(
+        "members/add.html",
+        form=form,
+        department_choices=dictionary_values("department"),
+        position_choices=dictionary_values("position"),
+    )
 
 
 def _normalize_full_name(name):
@@ -245,10 +268,12 @@ def import_members():
         created = 0
         updated = 0
         errors = []
+        seen_departments = set()
+        seen_positions = set()
         try:
             for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 full_name = (
-                    str(row[col_map["full_name"]]).strip() if row[col_map["full_name"]] else ""
+                    title_name(str(row[col_map["full_name"]])) if row[col_map["full_name"]] else ""
                 )
                 department = (
                     str(row[col_map["department"]]).strip() if row[col_map["department"]] else ""
@@ -303,12 +328,19 @@ def import_members():
                     existing_map[_normalize_full_name(full_name)] = member
                     note = "Импорт из Excel"
                     created += 1
+                seen_departments.add(department)
+                if position:
+                    seen_positions.add(position)
                 db.session.add(
                     MemberStatusHistory(
                         member_id=member.id, old_status=None, new_status="active", note=note
                     )
                 )
             db.session.commit()
+            for value in seen_departments:
+                save_dictionary_value("department", value)
+            for value in seen_positions:
+                save_dictionary_value("position", value)
         except Exception as e:
             db.session.rollback()
             flash(f"Ошибка импорта: {e}", "danger")
@@ -366,16 +398,26 @@ def edit(id):
     member = db.session.get(Member, id) or abort(404)
     form = MemberForm(obj=member)
     if form.validate_on_submit():
-        full_name = form.full_name.data.strip()
-        department = form.department.data.strip()
+        full_name = title_name(form.full_name.data)
+        department = (
+            save_dictionary_value("department", form.department.data.strip())
+            or form.department.data.strip()
+        )
         position = (form.position.data or "").strip() or None
+        position = save_dictionary_value("position", position) or position
         gender = form.gender.data
         birth_date = parse_date(form.birth_date.data)
         entry_date = parse_date(form.entry_date.data)
 
         if not birth_date or not entry_date:
             flash("Неверный формат даты", "danger")
-            return render_template("members/edit.html", member=member, form=form)
+            return render_template(
+                "members/edit.html",
+                member=member,
+                form=form,
+                department_choices=dictionary_values("department"),
+                position_choices=dictionary_values("position"),
+            )
 
         member.full_name = full_name
         member.department = department
@@ -398,7 +440,13 @@ def edit(id):
         db.session.commit()
         flash("Данные обновлены", "success")
         return redirect(url_for("members.detail", id=member.id))
-    return render_template("members/edit.html", member=member, form=form)
+    return render_template(
+        "members/edit.html",
+        member=member,
+        form=form,
+        department_choices=dictionary_values("department"),
+        position_choices=dictionary_values("position"),
+    )
 
 
 @bp.route("/<int:id>/delete", methods=["POST"])

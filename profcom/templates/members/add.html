@@ -18,7 +18,12 @@
         </div>
         <div class="col-md-6">
           <label class="form-label">Отдел</label>
-          <input type="text" name="department" class="form-control" value="{{ form.department.data or '' }}" required>
+          <input type="text" name="department" class="form-control" list="departments" value="{{ form.department.data or '' }}" required>
+          <datalist id="departments">
+            {% for value in department_choices %}
+            <option value="{{ value }}">
+            {% endfor %}
+          </datalist>
         </div>
         <div class="col-md-6">
           <label class="form-label">Фото профиля</label>
@@ -38,10 +43,9 @@
           <label class="form-label">Должность</label>
           <input type="text" name="position" class="form-control" list="positions" value="{{ form.position.data or '' }}" placeholder="например, Председатель">
           <datalist id="positions">
-            <option value="Председатель">
-            <option value="Заместитель председателя">
-            <option value="Секретарь">
-            <option value="Член профкома">
+            {% for value in position_choices %}
+            <option value="{{ value }}">
+            {% endfor %}
           </datalist>
         </div>
         <div class="col-md-6">

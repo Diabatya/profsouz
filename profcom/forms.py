@@ -2,9 +2,15 @@ from flask_wtf import FlaskForm
 from wtforms import FileField, PasswordField, SelectField, StringField
 from wtforms.validators import DataRequired, EqualTo, Length, Optional
 
+from utils import title_name
+
 
 class MemberForm(FlaskForm):
-    full_name = StringField("ФИО", validators=[DataRequired(), Length(min=2)])
+    full_name = StringField(
+        "ФИО",
+        validators=[DataRequired(), Length(min=2)],
+        filters=[title_name],
+    )
     department = StringField("Отдел", validators=[DataRequired()])
     position = StringField("Должность", validators=[Optional()])
     gender = SelectField(

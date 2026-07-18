@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import tempfile
 from datetime import date, datetime
@@ -8,6 +9,8 @@ from io import BytesIO
 
 from flask import redirect, send_file, session, url_for
 from openpyxl import Workbook
+
+from models import Dictionary, db
 
 
 def login_required(f):
@@ -36,6 +39,45 @@ def parse_decimal(s):
         return Decimal(str(s).replace(" ", "").replace(",", "."))
     except (InvalidOperation, ValueError):
         return Decimal(0)
+
+
+def title_name(value):
+    """Приводит ФИО/название к виду 'Иванов Иван Иванович'."""
+    if not value:
+        return value
+    name = str(value).strip()
+    name = re.sub(r"\s+", " ", name)
+    return name.title()
+
+
+def _normalize_value(value):
+    """Нормализация для сравнения значений справочника (без учёта регистра и ё/е)."""
+    return re.sub(r"\s+", " ", str(value or "").strip().lower().replace("ё", "е"))
+
+
+def dictionary_values(dtype):
+    """Возвращает отсортированный список значений справочника заданного типа."""
+    return [
+        d.value for d in Dictionary.query.filter_by(type=dtype).order_by(Dictionary.value).all()
+    ]
+
+
+def save_dictionary_value(dtype, value):
+    """Добавляет новое значение в справочник, если его ещё нет."""
+    if not value:
+        return None
+    value = str(value).strip()
+    value = re.sub(r"\s+", " ", value)
+    if not value:
+        return None
+    normalized = _normalize_value(value)
+    for existing in Dictionary.query.filter_by(type=dtype).all():
+        if _normalize_value(existing.value) == normalized:
+            return existing.value
+    entry = Dictionary(type=dtype, value=value)
+    db.session.add(entry)
+    db.session.commit()
+    return value
 
 
 def excel_response(headers, rows, filename="report.xlsx"):

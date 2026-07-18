@@ -13,7 +13,12 @@
       <div class="row g-3">
         <div class="col-md-6">
           <label class="form-label">Описание</label>
-          <input type="text" name="description" class="form-control" value="{{ record.description }}" required>
+          <input type="text" name="description" class="form-control" list="descriptions" value="{{ record.description }}" required>
+          <datalist id="descriptions">
+            {% for value in descriptions %}
+            <option value="{{ value }}">
+            {% endfor %}
+          </datalist>
         </div>
         <div class="col-md-3">
           <label class="form-label">Сумма, ₽</label>
@@ -34,8 +39,9 @@
           <label class="form-label">Категория</label>
           <input type="text" name="category" class="form-control" list="categories" value="{{ record.category }}">
           <datalist id="categories">
-            <option value="взносы">
-            <option value="прочее">
+            {% for value in categories %}
+            <option value="{{ value }}">
+            {% endfor %}
           </datalist>
         </div>
       </div>

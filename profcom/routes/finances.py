@@ -2,7 +2,15 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from sqlalchemy import func
 
 from models import FinanceRecord, db
-from utils import apply_sort, login_required, parse_date, parse_decimal, period_bounds
+from utils import (
+    apply_sort,
+    dictionary_values,
+    login_required,
+    parse_date,
+    parse_decimal,
+    period_bounds,
+    save_dictionary_value,
+)
 
 bp = Blueprint("finances", __name__, url_prefix="/finances")
 
@@ -69,8 +77,14 @@ def add():
 
         if not description or not rdate or not rtype:
             flash("Заполните все обязательные поля", "danger")
-            return render_template("finances/add.html")
+            return render_template(
+                "finances/add.html",
+                descriptions=dictionary_values("finance_description"),
+                categories=dictionary_values("finance_category"),
+            )
 
+        description = save_dictionary_value("finance_description", description) or description
+        category = save_dictionary_value("finance_category", category) or category
         record = FinanceRecord(
             description=description, amount=amount, date=rdate, type=rtype, category=category
         )
@@ -78,7 +92,11 @@ def add():
         db.session.commit()
         flash("Запись добавлена", "success")
         return redirect(url_for("finances.index"))
-    return render_template("finances/add.html")
+    return render_template(
+        "finances/add.html",
+        descriptions=dictionary_values("finance_description"),
+        categories=dictionary_values("finance_category"),
+    )
 
 
 @bp.route("/<int:id>/edit", methods=["GET", "POST"])
@@ -94,17 +112,29 @@ def edit(id):
 
         if not description or not rdate or not rtype:
             flash("Заполните все обязательные поля", "danger")
-            return render_template("finances/edit.html", record=record)
+            return render_template(
+                "finances/edit.html",
+                record=record,
+                descriptions=dictionary_values("finance_description"),
+                categories=dictionary_values("finance_category"),
+            )
 
-        record.description = description
+        record.description = (
+            save_dictionary_value("finance_description", description) or description
+        )
         record.amount = amount
         record.date = rdate
         record.type = rtype
-        record.category = category
+        record.category = save_dictionary_value("finance_category", category) or category
         db.session.commit()
         flash("Запись обновлена", "success")
         return redirect(url_for("finances.index"))
-    return render_template("finances/edit.html", record=record)
+    return render_template(
+        "finances/edit.html",
+        record=record,
+        descriptions=dictionary_values("finance_description"),
+        categories=dictionary_values("finance_category"),
+    )
 
 
 @bp.route("/<int:id>/delete", methods=["POST"])

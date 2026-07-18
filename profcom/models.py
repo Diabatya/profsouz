@@ -224,6 +224,15 @@ class MemberStatusHistory(db.Model):
     note = db.Column(db.String(200), nullable=True)
 
 
+class Dictionary(db.Model):
+    __tablename__ = "dictionary"
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String(50), nullable=False)
+    value = db.Column(db.String(200), nullable=False)
+
+    __table_args__ = (db.UniqueConstraint("type", "value", name="uq_dict_type_value"),)
+
+
 class FinanceRecord(db.Model):
     __tablename__ = "finance_record"
     id = db.Column(db.Integer, primary_key=True)
