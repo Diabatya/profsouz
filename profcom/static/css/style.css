@@ -267,3 +267,11 @@ main {
     background: #fff;
   }
 }
+
+.filter-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.filter-details > summary {
+  list-style: none;
+}
