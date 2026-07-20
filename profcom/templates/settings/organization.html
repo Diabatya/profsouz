@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Данные организации{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Данные организации</h1>
+  <a href="{{ url_for('settings.index') }}" class="btn btn-outline-secondary">{{ icon('arrow-left') }} Назад</a>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-12">
+          <label class="form-label">Полное наименование</label>
+          <input type="text" name="full_name" class="form-control" value="{{ org.full_name }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Сокращённое наименование</label>
+          <input type="text" name="short_name" class="form-control" value="{{ org.short_name }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Адрес</label>
+          <input type="text" name="address" class="form-control" value="{{ org.address }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Телефон</label>
+          <input type="text" name="phone" class="form-control" value="{{ org.phone }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Email</label>
+          <input type="text" name="email" class="form-control" value="{{ org.email }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">ИНН</label>
+          <input type="text" name="inn" class="form-control" value="{{ org.inn }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">КПП</label>
+          <input type="text" name="kpp" class="form-control" value="{{ org.kpp }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">ОГРН</label>
+          <input type="text" name="ogrn" class="form-control" value="{{ org.ogrn }}">
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">{{ icon('floppy') }} Сохранить</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

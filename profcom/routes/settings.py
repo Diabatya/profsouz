@@ -11,6 +11,7 @@ from models import (
     FinanceDistributionRule,
     FinanceRecord,
     Member,
+    Organization,
     PayoutCategory,
     PayoutType,
     Position,
@@ -442,3 +443,22 @@ def delete_union_officer(id):
     db.session.commit()
     flash("Ответственное лицо удалено", "success")
     return redirect(url_for("settings.union_officers"))
+
+
+@bp.route("/organization", methods=["GET", "POST"])
+@login_required
+def organization():
+    org = Organization.get_or_create()
+    if request.method == "POST":
+        org.full_name = request.form.get("full_name", "").strip()
+        org.short_name = request.form.get("short_name", "").strip()
+        org.address = request.form.get("address", "").strip()
+        org.phone = request.form.get("phone", "").strip()
+        org.email = request.form.get("email", "").strip()
+        org.inn = request.form.get("inn", "").strip()
+        org.kpp = request.form.get("kpp", "").strip()
+        org.ogrn = request.form.get("ogrn", "").strip()
+        db.session.commit()
+        flash("Данные организации сохранены", "success")
+        return redirect(url_for("settings.organization"))
+    return render_template("settings/organization.html", org=org)

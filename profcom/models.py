@@ -302,6 +302,28 @@ class FinanceDistributionRule(db.Model):
     parent = db.relationship("FinanceDistributionRule", remote_side=[id], backref="children")
 
 
+class Organization(db.Model):
+    __tablename__ = "organization"
+    id = db.Column(db.Integer, primary_key=True)
+    full_name = db.Column(db.String(300), nullable=False, default="")
+    short_name = db.Column(db.String(150), nullable=False, default="")
+    address = db.Column(db.String(300), nullable=False, default="")
+    phone = db.Column(db.String(50), nullable=False, default="")
+    email = db.Column(db.String(100), nullable=False, default="")
+    inn = db.Column(db.String(20), nullable=False, default="")
+    kpp = db.Column(db.String(20), nullable=False, default="")
+    ogrn = db.Column(db.String(30), nullable=False, default="")
+
+    @classmethod
+    def get_or_create(cls):
+        org = cls.query.first()
+        if not org:
+            org = cls()
+            db.session.add(org)
+            db.session.commit()
+        return org
+
+
 class FinanceRecordDistribution(db.Model):
     __tablename__ = "finance_record_distribution"
     id = db.Column(db.Integer, primary_key=True)

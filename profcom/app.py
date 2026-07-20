@@ -13,6 +13,7 @@ from models import (
     DocumentTemplate,
     FinanceDistributionRule,
     Group,
+    Organization,
     PayoutType,
     db,
 )
@@ -99,7 +100,9 @@ def index():
 
 @app.context_processor
 def utility_processor():
-    return {"today": date.today}
+    from models import Organization
+
+    return {"today": date.today, "current_org": Organization.get_or_create()}
 
 
 def seed_data():
@@ -173,6 +176,8 @@ def seed_data():
     for tpl in default_templates:
         if not DocumentTemplate.query.filter_by(name=tpl["name"]).first():
             db.session.add(DocumentTemplate(**tpl))
+
+    Organization.get_or_create()
 
     if not FinanceDistributionRule.query.first():
         db.session.add(
