@@ -232,7 +232,7 @@ def init_db():
             except Exception:
                 # fallback, если миграций нет
                 db.create_all()
-                migrate_db()
+            migrate_db()
         os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
         seed_data()
 
