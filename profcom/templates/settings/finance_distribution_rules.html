@@ -20,13 +20,19 @@
           <label class="form-check-label" for="active">Есть фонд</label>
         </div>
       </div>
-      <div class="col-md-2">
+      <div class="col-md-1">
         <div class="form-check">
           <input class="form-check-input" type="checkbox" name="is_primary" id="is_primary" value="1">
           <label class="form-check-label" for="is_primary">Основной</label>
         </div>
       </div>
-      <div class="col-md-2"><button type="submit" class="btn btn-sm btn-success w-100">{{ icon('plus-lg') }}</button></div>
+      <div class="col-md-1">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="is_bank_commission" id="is_bank_commission" value="1">
+          <label class="form-check-label" for="is_bank_commission">Комиссия</label>
+        </div>
+      </div>
+      <div class="col-md-1"><button type="submit" class="btn btn-sm btn-success w-100">{{ icon('plus-lg') }}</button></div>
     </form>
     <div class="form-text text-muted">Сумма дохода автоматически делится между фондами по указанным процентам. Основной фонд подставляется по умолчанию в расходах.</div>
   </div>
@@ -41,16 +47,22 @@
           <div class="col-md-3"><input type="text" name="name" class="form-control" value="{{ rule.name }}" required></div>
           <div class="col-md-2"><input type="number" step="0.01" name="percent" class="form-control" value="{{ rule.percent }}" required></div>
           <div class="col-md-1"><input type="number" name="order" class="form-control" value="{{ rule.order }}"></div>
-          <div class="col-md-2">
+          <div class="col-md-1">
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="active" id="active_{{ rule.id }}" value="1" {% if rule.active %}checked{% endif %}>
-              <label class="form-check-label small" for="active_{{ rule.id }}">Есть фонд</label>
+              <label class="form-check-label small" for="active_{{ rule.id }}">Есть</label>
             </div>
           </div>
-          <div class="col-md-2">
+          <div class="col-md-1">
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="is_primary" id="is_primary_{{ rule.id }}" value="1" {% if rule.is_primary %}checked{% endif %}>
               <label class="form-check-label small" for="is_primary_{{ rule.id }}">Основной</label>
+            </div>
+          </div>
+          <div class="col-md-1">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="is_bank_commission" id="is_bank_commission_{{ rule.id }}" value="1" {% if rule.is_bank_commission %}checked{% endif %}>
+              <label class="form-check-label small" for="is_bank_commission_{{ rule.id }}">Комиссия</label>
             </div>
           </div>
           <div class="col-md-1"><button type="submit" class="btn btn-sm btn-primary w-100">{{ icon('floppy') }}</button></div>

@@ -312,12 +312,18 @@ def add_finance_distribution_rule():
     order = request.form.get("order", type=int) or 0
     active = bool(request.form.get("active"))
     is_primary = bool(request.form.get("is_primary"))
+    is_bank_commission = bool(request.form.get("is_bank_commission"))
     if name:
         if is_primary:
             FinanceDistributionRule.query.update({"is_primary": False})
         db.session.add(
             FinanceDistributionRule(
-                name=name, percent=percent, order=order, active=active, is_primary=is_primary
+                name=name,
+                percent=percent,
+                order=order,
+                active=active,
+                is_primary=is_primary,
+                is_bank_commission=is_bank_commission,
             )
         )
         db.session.commit()
@@ -336,6 +342,7 @@ def edit_finance_distribution_rule(id):
     order = request.form.get("order", type=int) or 0
     active = bool(request.form.get("active"))
     is_primary = bool(request.form.get("is_primary"))
+    is_bank_commission = bool(request.form.get("is_bank_commission"))
     if name:
         if is_primary:
             FinanceDistributionRule.query.filter(FinanceDistributionRule.id != rule.id).update(
@@ -346,6 +353,7 @@ def edit_finance_distribution_rule(id):
         rule.order = order
         rule.active = active
         rule.is_primary = is_primary
+        rule.is_bank_commission = is_bank_commission
         db.session.commit()
         flash("Фонд обновлён", "success")
     else:

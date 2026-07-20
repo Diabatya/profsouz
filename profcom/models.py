@@ -296,6 +296,7 @@ class FinanceDistributionRule(db.Model):
     order = db.Column(db.Integer, default=0)
     active = db.Column(db.Boolean, default=True)
     is_primary = db.Column(db.Boolean, default=False)
+    is_bank_commission = db.Column(db.Boolean, default=False)
 
 
 class FinanceRecordDistribution(db.Model):

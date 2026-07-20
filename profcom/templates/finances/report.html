@@ -71,6 +71,38 @@
 </div>
 
 <div class="row g-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">Балансы фондов</div>
+      <div class="card-body table-responsive">
+        <table class="table table-sm table-hover text-end">
+          <thead>
+            <tr>
+              <th class="text-start">Фонд</th>
+              <th>Поступило</th>
+              <th>Расход</th>
+              <th>Остаток</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in fund_balances %}
+            <tr>
+              <td class="text-start">{{ f.name }}</td>
+              <td>{{ f.in|money }} ₽</td>
+              <td>{{ f.out|money }} ₽</td>
+              <td{% if f.balance < 0 %} class="text-danger"{% endif %}><strong>{{ f.balance|money }} ₽</strong></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-muted">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
   <div class="col-lg-6">
     <div class="card">
       <div class="card-header">Распределение доходов</div>

@@ -28,8 +28,23 @@ def _apply_distribution(record):
         .order_by(FinanceDistributionRule.order, FinanceDistributionRule.name)
         .all()
     )
+    primary = next((r for r in rules if r.is_primary), None)
+    commission_total = Decimal(0)
+    amounts = {}
     for rule in rules:
         amount = (record.amount * rule.percent) / Decimal(100)
+        if rule.is_bank_commission:
+            commission_total += amount
+        amounts[rule.id] = amount
+
+    if primary and primary.id in amounts:
+        primary_amount = amounts[primary.id] - commission_total
+        if primary_amount < 0:
+            primary_amount = Decimal(0)
+        amounts[primary.id] = primary_amount
+
+    for rule in rules:
+        amount = amounts[rule.id]
         if amount > 0:
             db.session.add(
                 FinanceRecordDistribution(
@@ -378,6 +393,33 @@ def report():
             }
         )
 
+    expense_q = (
+        db.session.query(
+            FinanceDistributionRule.name,
+            func.sum(FinanceRecord.amount).label("total"),
+        )
+        .join(FinanceRecord, FinanceDistributionRule.id == FinanceRecord.fund_id)
+        .filter(FinanceRecord.type == "expense")
+    )
+    if date_from:
+        expense_q = expense_q.filter(FinanceRecord.date >= date_from)
+    if date_to:
+        expense_q = expense_q.filter(FinanceRecord.date <= date_to)
+    expenses_by_fund = {r.name: r.total for r in expense_q.group_by(FinanceDistributionRule.name).all()}
+
+    fund_balances = []
+    for name in fund_names:
+        in_amt = fund_totals.get(name, Decimal(0))
+        out_amt = expenses_by_fund.get(name, Decimal(0)) or Decimal(0)
+        fund_balances.append(
+            {
+                "name": name,
+                "in": in_amt,
+                "out": out_amt,
+                "balance": in_amt - out_amt,
+            }
+        )
+
     return render_template(
         "finances/report.html",
         income=income,
@@ -390,6 +432,7 @@ def report():
         fund_names=fund_names,
         month_rows=month_rows,
         fund_totals=fund_totals,
+        fund_balances=fund_balances,
         period=period,
         date_from=request.args.get("date_from", ""),
         date_to=request.args.get("date_to", ""),
