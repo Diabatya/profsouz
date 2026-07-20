@@ -94,7 +94,17 @@
           <td>{{ r.description }}</td>
           <td>{{ r.category }}</td>
           <td>{% if r.type == 'income' %}<span class="badge bg-success">Доход</span>{% else %}<span class="badge bg-danger">Расход</span>{% endif %}</td>
-          <td>{% if r.type == 'expense' %}{{ r.expense_fund.name if r.expense_fund else '-' }}{% else %}-{% endif %}</td>
+          <td>
+            {% if r.type == 'income' %}
+              {% for d in r.distributions %}
+              <div class="small">{{ d.name }}: {{ d.amount|money }} ₽</div>
+              {% endfor %}
+            {% elif r.expense_fund %}
+              {{ r.expense_fund.name }}
+            {% else %}
+              -
+            {% endif %}
+          </td>
           <td>{{ r.amount|money }} ₽</td>
           <td class="text-end">
             <a href="{{ url_for('finances.edit', id=r.id) }}" class="btn btn-sm btn-outline-secondary me-1">{{ icon('pencil') }}</a>
