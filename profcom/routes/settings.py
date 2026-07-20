@@ -321,6 +321,7 @@ def add_finance_distribution_rule():
     if name:
         if is_primary:
             FinanceDistributionRule.query.update({"is_primary": False})
+            is_bank_commission = False
         db.session.add(
             FinanceDistributionRule(
                 name=name,
@@ -332,6 +333,9 @@ def add_finance_distribution_rule():
                 parent_id=parent_id,
             )
         )
+        db.session.commit()
+        for rec in FinanceRecord.query.filter_by(type="income").all():
+            _apply_distribution(rec)
         db.session.commit()
         flash("Фонд добавлен", "success")
     else:
@@ -354,6 +358,7 @@ def edit_finance_distribution_rule(id):
             FinanceDistributionRule.query.filter(FinanceDistributionRule.id != rule.id).update(
                 {"is_primary": False}
             )
+            is_bank_commission = False
         new_parent_id = request.form.get("parent_id", type=int)
         if new_parent_id == rule.id:
             new_parent_id = None
