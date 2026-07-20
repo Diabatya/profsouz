@@ -108,6 +108,45 @@
     </div>
   </div>
 
+  <div class="col-lg-4 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <span><strong>{{ icon('grid') }}</strong> Рабочий кабинет</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+          <div class="list-group-item">
+            <div class="small text-uppercase text-muted fw-bold mb-2">Люди</div>
+            <div class="d-flex flex-column gap-1">
+              <a href="{{ url_for('members.index') }}" class="text-decoration-none">{{ icon('people') }} Список членов</a>
+              <a href="{{ url_for('members.import_members') }}" class="text-decoration-none">{{ icon('file-earmark-arrow-up') }} Импорт из Excel</a>
+              <a href="{{ url_for('members.profkom') }}" class="text-decoration-none">{{ icon('building') }} Профком</a>
+              <a href="{{ url_for('members.groups') }}" class="text-decoration-none">{{ icon('collection') }} Группы</a>
+              <a href="{{ url_for('birthdays.index') }}" class="text-decoration-none">{{ icon('gift') }} Именинники</a>
+            </div>
+          </div>
+          <div class="list-group-item">
+            <div class="small text-uppercase text-muted fw-bold mb-2">Документы и выплаты</div>
+            <div class="d-flex flex-column gap-1">
+              <a href="{{ url_for('payouts.index') }}" class="text-decoration-none">{{ icon('cash') }} Выплаты</a>
+              <a href="{{ url_for('protocols.index') }}" class="text-decoration-none">{{ icon('file-earmark-text') }} Протоколы</a>
+              <a href="{{ url_for('events.index') }}" class="text-decoration-none">{{ icon('calendar-event') }} Мероприятия</a>
+              <a href="{{ url_for('awards.index') }}" class="text-decoration-none">{{ icon('award') }} Награды</a>
+            </div>
+          </div>
+          <div class="list-group-item">
+            <div class="small text-uppercase text-muted fw-bold mb-2">Учёт и отчётность</div>
+            <div class="d-flex flex-column gap-1">
+              <a href="{{ url_for('finances.index') }}" class="text-decoration-none">{{ icon('wallet') }} Финансы</a>
+              <a href="{{ url_for('inventory.index') }}" class="text-decoration-none">{{ icon('box-seam') }} Инвентарь</a>
+              <a href="{{ url_for('reports.index') }}" class="text-decoration-none">{{ icon('file-earmark-excel') }} Отчёты</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <div class="row">
