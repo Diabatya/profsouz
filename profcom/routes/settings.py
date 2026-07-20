@@ -9,6 +9,7 @@ from models import (
     AnniversarySetting,
     Dictionary,
     FinanceDistributionRule,
+    FinanceRecord,
     Member,
     PayoutCategory,
     PayoutType,
@@ -17,6 +18,8 @@ from models import (
     db,
 )
 from utils import login_required, parse_decimal
+
+from .finances import _apply_distribution
 
 bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -355,6 +358,9 @@ def edit_finance_distribution_rule(id):
         rule.is_primary = is_primary
         rule.is_bank_commission = is_bank_commission
         db.session.commit()
+        for rec in FinanceRecord.query.filter_by(type="income").all():
+            _apply_distribution(rec)
+        db.session.commit()
         flash("Фонд обновлён", "success")
     else:
         flash("Укажите название", "danger")
@@ -366,6 +372,9 @@ def edit_finance_distribution_rule(id):
 def delete_finance_distribution_rule(id):
     rule = db.session.get(FinanceDistributionRule, id) or abort(404)
     db.session.delete(rule)
+    db.session.commit()
+    for rec in FinanceRecord.query.filter_by(type="income").all():
+        _apply_distribution(rec)
     db.session.commit()
     flash("Фонд удалён", "success")
     return redirect(url_for("settings.finance_distribution_rules"))

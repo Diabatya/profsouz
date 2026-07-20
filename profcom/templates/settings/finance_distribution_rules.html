@@ -66,11 +66,7 @@
             </div>
           </div>
           <div class="col-md-1"><button type="submit" class="btn btn-sm btn-primary w-100">{{ icon('floppy') }}</button></div>
-          <div class="col-md-1">
-            <form method="post" action="{{ url_for('settings.delete_finance_distribution_rule', id=rule.id) }}" class="delete-form">
-              <button type="submit" class="btn btn-sm btn-outline-danger w-100">{{ icon('trash') }}</button>
-            </form>
-          </div>
+          <div class="col-md-1"><button type="submit" class="btn btn-sm btn-outline-danger w-100" formaction="{{ url_for('settings.delete_finance_distribution_rule', id=rule.id) }}" formmethod="post">{{ icon('trash') }}</button></div>
         </form>
       </div>
     </div>
