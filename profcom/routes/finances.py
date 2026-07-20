@@ -261,10 +261,18 @@ def export():
 
     rows = []
     for r in q.order_by(FinanceRecord.date.desc()).all():
-        rows.append(
-            [r.date.strftime("%d.%m.%Y"), r.description, r.type, r.category, float(r.amount)]
-        )
-    headers = ["Дата", "Описание", "Тип", "Категория", "Сумма"]
+        type_label = "Доход" if r.type == "income" else "Расход"
+        if r.type == "income" and r.distributions:
+            for d in r.distributions:
+                rows.append(
+                    [r.date.strftime("%d.%m.%Y"), r.description, type_label, r.category, d.name, float(d.amount)]
+                )
+        else:
+            fund_name = r.expense_fund.name if r.expense_fund else "-"
+            rows.append(
+                [r.date.strftime("%d.%m.%Y"), r.description, type_label, r.category, fund_name, float(r.amount)]
+            )
+    headers = ["Дата", "Описание", "Тип", "Категория", "Фонд", "Сумма"]
     return excel_response(headers, rows, "finansi.xlsx")
 
 
