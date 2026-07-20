@@ -40,6 +40,14 @@ def _apply_distribution(record):
             )
 
 
+def _active_funds():
+    return (
+        FinanceDistributionRule.query.filter_by(active=True)
+        .order_by(FinanceDistributionRule.order, FinanceDistributionRule.name)
+        .all()
+    )
+
+
 @bp.route("/")
 @login_required
 def index():
@@ -93,12 +101,17 @@ def index():
 @bp.route("/add", methods=["GET", "POST"])
 @login_required
 def add():
+    funds = _active_funds()
+    primary = next((f for f in funds if f.is_primary), funds[0] if funds else None)
+    primary_fund_id = primary.id if primary else None
+
     if request.method == "POST":
         description = request.form.get("description", "").strip()
         amount = parse_decimal(request.form.get("amount", "0"))
         rdate = parse_date(request.form.get("date"))
         rtype = request.form.get("type", "")
         category = request.form.get("category", "").strip() or "прочее"
+        fund_id = request.form.get("fund_id", type=int) or primary_fund_id
 
         if not description or not rdate or not rtype:
             flash("Заполните все обязательные поля", "danger")
@@ -106,12 +119,29 @@ def add():
                 "finances/add.html",
                 descriptions=dictionary_values("finance_description"),
                 categories=dictionary_values("finance_category"),
+                funds=funds,
+                primary_fund_id=primary_fund_id,
+            )
+
+        if rtype == "expense" and not fund_id:
+            flash("Выберите фонд для расхода", "danger")
+            return render_template(
+                "finances/add.html",
+                descriptions=dictionary_values("finance_description"),
+                categories=dictionary_values("finance_category"),
+                funds=funds,
+                primary_fund_id=primary_fund_id,
             )
 
         description = save_dictionary_value("finance_description", description) or description
         category = save_dictionary_value("finance_category", category) or category
         record = FinanceRecord(
-            description=description, amount=amount, date=rdate, type=rtype, category=category
+            description=description,
+            amount=amount,
+            date=rdate,
+            type=rtype,
+            category=category,
+            fund_id=fund_id if rtype == "expense" else None,
         )
         db.session.add(record)
         db.session.flush()
@@ -123,6 +153,8 @@ def add():
         "finances/add.html",
         descriptions=dictionary_values("finance_description"),
         categories=dictionary_values("finance_category"),
+        funds=funds,
+        primary_fund_id=primary_fund_id,
     )
 
 
@@ -130,12 +162,18 @@ def add():
 @login_required
 def edit(id):
     record = db.session.get(FinanceRecord, id) or abort(404)
+    funds = _active_funds()
+    primary = next((f for f in funds if f.is_primary), funds[0] if funds else None)
+    primary_fund_id = primary.id if primary else None
+    selected_fund_id = record.fund_id or primary_fund_id
+
     if request.method == "POST":
         description = request.form.get("description", "").strip()
         amount = parse_decimal(request.form.get("amount", "0"))
         rdate = parse_date(request.form.get("date"))
         rtype = request.form.get("type", "")
         category = request.form.get("category", "").strip() or "прочее"
+        fund_id = request.form.get("fund_id", type=int) or primary_fund_id
 
         if not description or not rdate or not rtype:
             flash("Заполните все обязательные поля", "danger")
@@ -144,6 +182,19 @@ def edit(id):
                 record=record,
                 descriptions=dictionary_values("finance_description"),
                 categories=dictionary_values("finance_category"),
+                funds=funds,
+                primary_fund_id=primary_fund_id,
+            )
+
+        if rtype == "expense" and not fund_id:
+            flash("Выберите фонд для расхода", "danger")
+            return render_template(
+                "finances/edit.html",
+                record=record,
+                descriptions=dictionary_values("finance_description"),
+                categories=dictionary_values("finance_category"),
+                funds=funds,
+                primary_fund_id=primary_fund_id,
             )
 
         record.description = (
@@ -153,6 +204,7 @@ def edit(id):
         record.date = rdate
         record.type = rtype
         record.category = save_dictionary_value("finance_category", category) or category
+        record.fund_id = fund_id if rtype == "expense" else None
         _apply_distribution(record)
         db.session.commit()
         flash("Запись обновлена", "success")
@@ -162,6 +214,9 @@ def edit(id):
         record=record,
         descriptions=dictionary_values("finance_description"),
         categories=dictionary_values("finance_category"),
+        funds=funds,
+        primary_fund_id=primary_fund_id,
+        selected_fund_id=selected_fund_id,
     )
 
 

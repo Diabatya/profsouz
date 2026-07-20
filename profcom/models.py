@@ -280,10 +280,12 @@ class FinanceRecord(db.Model):
     amount = db.Column(db.Numeric(12, 2), nullable=False)
     type = db.Column(db.String(20), nullable=False)
     category = db.Column(db.String(50), default="прочее")
+    fund_id = db.Column(db.Integer, db.ForeignKey("finance_distribution_rule.id"), nullable=True)
 
     distributions = db.relationship(
         "FinanceRecordDistribution", backref="record", lazy="dynamic", cascade="all, delete-orphan"
     )
+    expense_fund = db.relationship("FinanceDistributionRule", foreign_keys=[fund_id])
 
 
 class FinanceDistributionRule(db.Model):
@@ -293,6 +295,7 @@ class FinanceDistributionRule(db.Model):
     percent = db.Column(db.Numeric(5, 2), nullable=False, default=0)
     order = db.Column(db.Integer, default=0)
     active = db.Column(db.Boolean, default=True)
+    is_primary = db.Column(db.Boolean, default=False)
 
 
 class FinanceRecordDistribution(db.Model):

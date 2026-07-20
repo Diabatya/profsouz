@@ -28,14 +28,14 @@
           <label class="form-label">Дата</label>
           <input type="date" name="date" class="form-control" value="{{ record.date.strftime('%Y-%m-%d') }}" required>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label class="form-label">Тип</label>
-          <select name="type" class="form-select" required>
+          <select name="type" id="finance-type" class="form-select" required>
             <option value="income" {% if record.type == 'income' %}selected{% endif %}>Доход</option>
             <option value="expense" {% if record.type == 'expense' %}selected{% endif %}>Расход</option>
           </select>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label class="form-label">Категория</label>
           <input type="text" name="category" class="form-control" list="categories" value="{{ record.category }}">
           <datalist id="categories">
@@ -44,6 +44,14 @@
             {% endfor %}
           </datalist>
         </div>
+        <div class="col-md-4" id="fund-wrapper" style="display:none;">
+          <label class="form-label">Фонд списания</label>
+          <select name="fund_id" class="form-select">
+            {% for f in funds %}
+            <option value="{{ f.id }}" {% if f.id == selected_fund_id %}selected{% endif %}>{{ f.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
       </div>
       <div class="mt-4">
         <button type="submit" class="btn btn-primary">{{ icon('floppy') }} Сохранить</button>
@@ -51,4 +59,15 @@
     </form>
   </div>
 </div>
+
+{% block extra_js %}
+<script>
+  const typeSelect = document.getElementById('finance-type');
+  const fundWrapper = document.getElementById('fund-wrapper');
+  function toggleFund() {
+    fundWrapper.style.display = typeSelect.value === 'expense' ? 'block' : 'none';
+  }
+  typeSelect.addEventListener('change', toggleFund);
+  toggleFund();
+</script>
 {% endblock %}

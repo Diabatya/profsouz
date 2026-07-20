@@ -311,12 +311,17 @@ def add_finance_distribution_rule():
     percent = parse_decimal(request.form.get("percent", "0"))
     order = request.form.get("order", type=int) or 0
     active = bool(request.form.get("active"))
+    is_primary = bool(request.form.get("is_primary"))
     if name:
+        if is_primary:
+            FinanceDistributionRule.query.update({"is_primary": False})
         db.session.add(
-            FinanceDistributionRule(name=name, percent=percent, order=order, active=active)
+            FinanceDistributionRule(
+                name=name, percent=percent, order=order, active=active, is_primary=is_primary
+            )
         )
         db.session.commit()
-        flash("Правило распределения добавлено", "success")
+        flash("Фонд добавлен", "success")
     else:
         flash("Укажите название", "danger")
     return redirect(url_for("settings.finance_distribution_rules"))
@@ -330,13 +335,19 @@ def edit_finance_distribution_rule(id):
     percent = parse_decimal(request.form.get("percent", "0"))
     order = request.form.get("order", type=int) or 0
     active = bool(request.form.get("active"))
+    is_primary = bool(request.form.get("is_primary"))
     if name:
+        if is_primary:
+            FinanceDistributionRule.query.filter(FinanceDistributionRule.id != rule.id).update(
+                {"is_primary": False}
+            )
         rule.name = name
         rule.percent = percent
         rule.order = order
         rule.active = active
+        rule.is_primary = is_primary
         db.session.commit()
-        flash("Правило распределения обновлено", "success")
+        flash("Фонд обновлён", "success")
     else:
         flash("Укажите название", "danger")
     return redirect(url_for("settings.finance_distribution_rules"))
@@ -348,7 +359,7 @@ def delete_finance_distribution_rule(id):
     rule = db.session.get(FinanceDistributionRule, id) or abort(404)
     db.session.delete(rule)
     db.session.commit()
-    flash("Правило распределения удалено", "success")
+    flash("Фонд удалён", "success")
     return redirect(url_for("settings.finance_distribution_rules"))
 
 

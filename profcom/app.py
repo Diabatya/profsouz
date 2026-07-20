@@ -7,7 +7,15 @@ from flask import Flask, g, redirect, session, url_for
 from flask_migrate import Migrate
 
 import config
-from models import Admin, AnniversarySetting, DocumentTemplate, Group, PayoutType, db
+from models import (
+    Admin,
+    AnniversarySetting,
+    DocumentTemplate,
+    FinanceDistributionRule,
+    Group,
+    PayoutType,
+    db,
+)
 from utils import login_required
 
 
@@ -165,6 +173,13 @@ def seed_data():
     for tpl in default_templates:
         if not DocumentTemplate.query.filter_by(name=tpl["name"]).first():
             db.session.add(DocumentTemplate(**tpl))
+
+    if not FinanceDistributionRule.query.first():
+        db.session.add(
+            FinanceDistributionRule(
+                name="Первичный профсоюз", percent=100, order=0, active=True, is_primary=True
+            )
+        )
 
     db.session.commit()
 
