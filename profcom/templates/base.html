@@ -108,96 +108,82 @@
   {%- endmacro %}
 
   {% block navbar %}
-  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
-    <div class="container-fluid px-4">
+  <nav class="navbar d-lg-none navbar-light bg-white shadow-sm sticky-top">
+    <div class="container-fluid px-3">
       <a class="navbar-brand d-flex align-items-center" href="{{ url_for('main.dashboard') }}">
-        <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Логотип" class="me-2" style="height:32px;width:auto;">
+        <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Логотип" class="me-2" style="height:28px;width:auto;">
         Профсоюз
       </a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Переключить меню">
-        <span class="navbar-toggler-icon"></span>
+      <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarNav" aria-controls="sidebarNav" aria-expanded="false" aria-label="Меню">
+        {{ icon('list') }}
       </button>
-      <div class="collapse navbar-collapse" id="mainNav">
-        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('main.') %}active{% endif %}" href="{{ url_for('main.dashboard') }}">{{ icon('house') }} Главная</a>
-          </li>
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle {% if request.endpoint and request.endpoint.startswith('members.') %}active{% endif %}" href="#" id="membersDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">{{ icon('people') }} Члены</a>
-            <ul class="dropdown-menu" aria-labelledby="membersDropdown">
-              <li><a class="dropdown-item" href="{{ url_for('members.index') }}">Список членов</a></li>
-              <li><a class="dropdown-item" href="{{ url_for('members.gifts') }}">Списки подарков</a></li>
-              <li><a class="dropdown-item" href="{{ url_for('members.profkom') }}">Профком</a></li>
-              <li><a class="dropdown-item" href="{{ url_for('members.committees') }}">Комитеты</a></li>
-            </ul>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint == 'members.profkom' %}active{% endif %}" href="{{ url_for('members.profkom') }}">{{ icon('building') }} Профком</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint == 'members.committees' %}active{% endif %}" href="{{ url_for('members.committees') }}">{{ icon('people') }} Комитеты</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('payouts.') %}active{% endif %}" href="{{ url_for('payouts.index') }}">{{ icon('cash') }} Выплаты</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('protocols.') %}active{% endif %}" href="{{ url_for('protocols.index') }}">{{ icon('file-earmark-text') }} Протоколы</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('events.') %}active{% endif %}" href="{{ url_for('events.index') }}">{{ icon('calendar-event') }} Мероприятия</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('finances.') %}active{% endif %}" href="{{ url_for('finances.index') }}">{{ icon('wallet') }} Финансы</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('inventory.') %}active{% endif %}" href="{{ url_for('inventory.index') }}">{{ icon('box-seam') }} Инвентарь</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('awards.') %}active{% endif %}" href="{{ url_for('awards.index') }}">{{ icon('award') }} Награды</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('birthdays.') %}active{% endif %}" href="{{ url_for('birthdays.index') }}">{{ icon('gift') }} Именинники</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint == 'main.timeline' %}active{% endif %}" href="{{ url_for('main.timeline') }}">{{ icon('clock-history') }} Лента</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('reports.') %}active{% endif %}" href="{{ url_for('reports.index') }}">{{ icon('file-earmark-excel') }} Отчёты</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and request.endpoint.startswith('settings.') %}active{% endif %}" href="{{ url_for('settings.index') }}">{{ icon('gear') }} Настройки</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('auth.logout') }}">{{ icon('box-arrow-right') }} Выход</a>
-          </li>
-        </ul>
-      </div>
     </div>
   </nav>
   {% endblock %}
 
-  <main class="container-fluid px-4 py-4">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+  <div class="d-flex min-vh-100">
+    <div class="collapse d-lg-block sidebar-collapse" id="sidebarNav">
+      <aside class="sidebar d-flex flex-column h-100">
+        <a class="sidebar-brand d-none d-lg-flex align-items-center" href="{{ url_for('main.dashboard') }}">
+          <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="" style="height:32px;width:auto;">
+          <span class="ms-2">Профсоюз</span>
+        </a>
+        <div class="sidebar-scroll flex-grow-1">
+          <div class="sidebar-section">Основное</div>
+          <a class="sidebar-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}">{{ icon('house') }} Главная</a>
+          <a class="sidebar-link {% if request.endpoint == 'main.timeline' %}active{% endif %}" href="{{ url_for('main.timeline') }}">{{ icon('clock-history') }} Лента</a>
 
-    {% block content %}{% endblock %}
-  </main>
+          <div class="sidebar-section">Члены профсоюза</div>
+          <a class="sidebar-link {% if request.endpoint == 'members.index' %}active{% endif %}" href="{{ url_for('members.index') }}">{{ icon('people') }} Список</a>
+          <a class="sidebar-link {% if request.endpoint == 'members.import_members' %}active{% endif %}" href="{{ url_for('members.import_members') }}">{{ icon('file-earmark-arrow-up') }} Импорт</a>
+          <a class="sidebar-link {% if request.endpoint == 'members.groups' %}active{% endif %}" href="{{ url_for('members.groups') }}">{{ icon('collection') }} Группы</a>
+          <a class="sidebar-link {% if request.endpoint == 'members.profkom' %}active{% endif %}" href="{{ url_for('members.profkom') }}">{{ icon('building') }} Профком</a>
+          <a class="sidebar-link {% if request.endpoint == 'members.committees' %}active{% endif %}" href="{{ url_for('members.committees') }}">{{ icon('people') }} Комитеты</a>
+          <a class="sidebar-link {% if request.endpoint == 'birthdays.index' %}active{% endif %}" href="{{ url_for('birthdays.index') }}">{{ icon('gift') }} Именинники</a>
 
-  {% block footer %}
-  <footer class="bg-white text-center py-3 text-muted small mt-auto">
-    <div class="container-fluid">
-      Профсоюз &middot; учёт профсоюзной организации
+          <div class="sidebar-section">Рабочие вопросы</div>
+          <a class="sidebar-link {% if request.endpoint == 'payouts.index' %}active{% endif %}" href="{{ url_for('payouts.index') }}">{{ icon('cash') }} Выплаты</a>
+          <a class="sidebar-link {% if request.endpoint == 'protocols.index' %}active{% endif %}" href="{{ url_for('protocols.index') }}">{{ icon('file-earmark-text') }} Протоколы</a>
+          <a class="sidebar-link {% if request.endpoint == 'events.index' %}active{% endif %}" href="{{ url_for('events.index') }}">{{ icon('calendar-event') }} Мероприятия</a>
+          <a class="sidebar-link {% if request.endpoint and request.endpoint.startswith('awards.') %}active{% endif %}" href="{{ url_for('awards.index') }}">{{ icon('award') }} Награды</a>
+
+          <div class="sidebar-section">Учёт</div>
+          <a class="sidebar-link {% if request.endpoint == 'finances.index' %}active{% endif %}" href="{{ url_for('finances.index') }}">{{ icon('wallet') }} Финансы</a>
+          <a class="sidebar-link {% if request.endpoint == 'inventory.index' %}active{% endif %}" href="{{ url_for('inventory.index') }}">{{ icon('box-seam') }} Инвентарь</a>
+          <a class="sidebar-link {% if request.endpoint == 'reports.index' %}active{% endif %}" href="{{ url_for('reports.index') }}">{{ icon('file-earmark-excel') }} Отчёты</a>
+
+          <div class="sidebar-section">Система</div>
+          <a class="sidebar-link {% if request.endpoint and request.endpoint.startswith('settings.') %}active{% endif %}" href="{{ url_for('settings.index') }}">{{ icon('gear') }} Настройки</a>
+          <a class="sidebar-link" href="{{ url_for('auth.logout') }}">{{ icon('box-arrow-right') }} Выход</a>
+        </div>
+      </aside>
     </div>
-  </footer>
-  {% endblock %}
+
+    <div class="main-wrapper d-flex flex-column flex-grow-1">
+      <main class="flex-grow-1 p-4 overflow-auto">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </main>
+
+      {% block footer %}
+      <footer class="bg-white text-center py-3 text-muted small mt-auto">
+        <div class="container-fluid">
+          Профсоюз &middot; учёт профсоюзной организации
+        </div>
+      </footer>
+      {% endblock %}
+    </div>
+  </div>
 
   <button type="button" id="backToTop" class="btn btn-primary rounded-circle shadow d-none" title="Наверх" aria-label="Наверх" style="position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1040; width: 48px; height: 48px;">
     {{ icon('arrow-up') }}

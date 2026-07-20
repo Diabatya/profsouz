@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 {% from 'base.html' import icon %}
-{% block title %}Шаблоны наград{% endblock %}
+{% block title %}Награды{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">Шаблоны документов и наград</h1>
+  <h1 class="h3 mb-0">Награды</h1>
   <a href="{{ url_for('awards.mass') }}" class="btn btn-primary">{{ icon('printer') }} Массовая печать</a>
 </div>
 
-<div class="card mb-4">
-  <div class="card-header">Добавить шаблон</div>
+  <div class="card mb-4">
+  <div class="card-header">Добавить шаблон награды</div>
   <div class="card-body">
     <form method="post" action="{{ url_for('awards.add_template') }}" enctype="multipart/form-data" class="row g-3">
       <div class="col-md-3"><input type="text" name="name" class="form-control" placeholder="Название (для списка)" required></div>
@@ -17,8 +17,6 @@
         <select name="type" class="form-select">
           <option value="award">Награда/грамота</option>
           <option value="letter">Благодарственное письмо</option>
-          <option value="entry">Вступление</option>
-          <option value="other">Другое</option>
         </select>
       </div>
       <div class="col-md-2"><input type="number" name="order" class="form-control" value="0" placeholder="Порядок"></div>
@@ -29,11 +27,11 @@
       <div class="col-md-3">
         <input type="file" name="pptx" accept=".pptx" class="form-control" title="Шаблон PowerPoint">
       </div>
-      <div class="col-md-6">
-        <span class="text-muted small">HTML: <code>{% raw %}{{ member.full_name }}, {{ issued_at|dt }}, {{ image_url }}{% endraw %}</code>. Или загрузите <strong>.pptx</strong> и укажите соответствие полей.</span>
-      </div>
       <div class="col-12">
-        <textarea name="body" class="form-control" rows="8" placeholder="HTML тело (или оставьте пустым, если используется PPTX)">{% raw %}{{ member.full_name }}{% endraw %}</textarea>
+        <details class="mt-2">
+          <summary class="text-muted small">HTML-шаблон (для ручной верстки, необязательно)</summary>
+          <textarea name="body" class="form-control mt-2" rows="6" placeholder="HTML тело (или оставьте пустым, если используется PPTX)">{% raw %}{{ member.full_name }}{% endraw %}</textarea>
+        </details>
       </div>
     </form>
   </div>
@@ -51,8 +49,6 @@
             <select name="type" class="form-select">
               <option value="award" {% if t.type == 'award' %}selected{% endif %}>Награда</option>
               <option value="letter" {% if t.type == 'letter' %}selected{% endif %}>Письмо</option>
-              <option value="entry" {% if t.type == 'entry' %}selected{% endif %}>Вступление</option>
-              <option value="other" {% if t.type == 'other' %}selected{% endif %}>Другое</option>
             </select>
           </div>
           <div class="col-md-1"><input type="number" name="order" class="form-control" value="{{ t.order }}"></div>
@@ -76,7 +72,12 @@
               <button type="submit" class="btn btn-outline-danger btn-sm">{{ icon('trash') }} Удалить</button>
             </form>
           </div>
-          <div class="col-12"><textarea name="body" class="form-control" rows="6">{{ t.body }}</textarea></div>
+          <div class="col-12">
+            <details class="mt-2">
+              <summary class="text-muted small">HTML-шаблон (для ручной верстки, необязательно)</summary>
+              <textarea name="body" class="form-control mt-2" rows="6">{{ t.body }}</textarea>
+            </details>
+          </div>
         </form>
       </div>
     </div>
