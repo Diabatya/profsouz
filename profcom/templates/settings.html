@@ -14,7 +14,7 @@
         <form method="post" action="{{ url_for('settings.add_payout_type') }}" class="row g-2 mb-3">
           <div class="col-5"><input type="text" name="name" class="form-control" placeholder="Название" required></div>
           <div class="col-4"><input type="number" step="0.01" name="default_amount" class="form-control" placeholder="Сумма по умол." value="0"></div>
-          <div class="col-3"><button type="submit" class="btn btn-success w-100">{{ icon('plus-lg') }}</button></div>
+          <div class="col-3"><button type="submit" class="btn btn-sm btn-success w-100">{{ icon('plus-lg') }}</button></div>
         </form>
         <ul class="list-group list-group-flush">
           {% for t in payout_types %}
@@ -74,7 +74,7 @@
         <form method="post" action="{{ url_for('settings.save_anniversaries') }}" class="row g-2 mb-3">
           <div class="col-4"><input type="number" name="new_age" class="form-control" placeholder="Возраст"></div>
           <div class="col-5"><input type="number" step="0.01" name="new_amount" class="form-control" placeholder="Сумма"></div>
-          <div class="col-3"><button type="submit" class="btn btn-primary w-100">{{ icon('floppy') }}</button></div>
+          <div class="col-3"><button type="submit" class="btn btn-sm btn-primary w-100">{{ icon('floppy') }}</button></div>
         </form>
       </div>
     </div>
