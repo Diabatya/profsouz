@@ -111,9 +111,8 @@ def _fund_summary(date_from=None, date_to=None):
         memo[rule_id] = total
         return total
 
-    top_total_in = {f.id: _total_in(f.id, own_in) for f in top_funds}
     Distribution = namedtuple("Distribution", ["name", "total"])
-    distributions = [Distribution(name=f.name, total=top_total_in[f.id]) for f in top_funds]
+    distributions = [Distribution(name=f.name, total=own_in.get(f.id, Decimal(0))) for f in active_funds]
 
     cumulative_distribution_q = (
         db.session.query(
