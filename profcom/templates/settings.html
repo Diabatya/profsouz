@@ -147,12 +147,12 @@
 
   <div class="col-lg-6">
     <div class="card">
-      <div class="card-header">Бэкап базы данных</div>
+      <div class="card-header">Копия базы данных</div>
       <div class="card-body">
-        <p class="text-muted">Скачать копию database.db с меткой времени.</p>
-        <a href="{{ url_for('settings.backup') }}" class="btn btn-outline-primary mb-3">{{ icon('download') }} Скачать базу данных</a>
+        <p class="text-muted">Скачать копию файла базы данных с меткой времени.</p>
+        <a href="{{ url_for('settings.backup') }}" class="btn btn-outline-primary mb-3">{{ icon('download') }} Скачать базу</a>
         <hr>
-        <p class="text-muted">Восстановить базу из файла .db. Текущая база будет сохранена как database.db.bak.</p>
+        <p class="text-muted">Восстановить базу из файла .db. Текущая база будет сохранена как файл .db.bak.</p>
         <form method="post" action="{{ url_for('settings.restore') }}" enctype="multipart/form-data">
           <div class="input-group">
             <input type="file" name="file" class="form-control" accept=".db" required>
