@@ -146,7 +146,7 @@ def _fund_summary(date_from=None, date_to=None):
         res = []
         for rid in rule_ids:
             f = fund_by_id[rid]
-            total = _total_in(rid, in_dict)
+            total = in_dict.get(rid, Decimal(0))
             res.append(
                 {
                     "id": f.id,
@@ -594,7 +594,7 @@ def report():
         res = []
         for rid in rule_ids:
             f = fund_by_id[rid]
-            total = _total_in(rid, in_dict)
+            total = in_dict.get(rid, Decimal(0))
             res.append(
                 {
                     "id": f.id,
