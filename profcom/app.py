@@ -235,8 +235,8 @@ def init_db():
             try:
                 upgrade()
             except Exception:
-                # fallback, если миграций нет
-                db.create_all()
+                pass
+            db.create_all()
             migrate_db()
         os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
         seed_data()
