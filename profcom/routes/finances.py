@@ -1,3 +1,4 @@
+from collections import defaultdict
 from decimal import Decimal
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
@@ -313,6 +314,70 @@ def report():
     balance = income - expense
     net = balance - total_distributed
 
+    active_funds = (
+        FinanceDistributionRule.query.filter_by(active=True)
+        .order_by(FinanceDistributionRule.order, FinanceDistributionRule.name)
+        .all()
+    )
+    active_names = [f.name for f in active_funds]
+
+    monthly_q = (
+        db.session.query(
+            func.strftime("%Y-%m", FinanceRecord.date).label("month"),
+            FinanceRecordDistribution.name,
+            func.sum(FinanceRecordDistribution.amount).label("total"),
+        )
+        .join(FinanceRecord)
+        .filter(FinanceRecord.type == "income")
+    )
+    if date_from:
+        monthly_q = monthly_q.filter(FinanceRecord.date >= date_from)
+    if date_to:
+        monthly_q = monthly_q.filter(FinanceRecord.date <= date_to)
+    monthly_rows = (
+        monthly_q.group_by("month", FinanceRecordDistribution.name)
+        .order_by("month")
+        .all()
+    )
+
+    income_monthly_q = (
+        db.session.query(
+            func.strftime("%Y-%m", FinanceRecord.date).label("month"),
+            func.sum(FinanceRecord.amount).label("total"),
+        )
+        .filter(FinanceRecord.type == "income")
+    )
+    if date_from:
+        income_monthly_q = income_monthly_q.filter(FinanceRecord.date >= date_from)
+    if date_to:
+        income_monthly_q = income_monthly_q.filter(FinanceRecord.date <= date_to)
+    income_by_month = {
+        r.month: r.total
+        for r in income_monthly_q.group_by("month").order_by("month").all()
+    }
+
+    month_funds = defaultdict(lambda: defaultdict(lambda: Decimal(0)))
+    fund_totals = defaultdict(lambda: Decimal(0))
+    all_names = set(active_names)
+    for r in monthly_rows:
+        month_funds[r.month][r.name] = r.total
+        fund_totals[r.name] += r.total
+        all_names.add(r.name)
+
+    fund_names = [n for n in active_names if n in all_names]
+    fund_names.extend(sorted(all_names - set(active_names)))
+
+    month_rows = []
+    for m in sorted(set(income_by_month.keys()) | set(month_funds.keys())):
+        month_rows.append(
+            {
+                "month": m,
+                "label": f"{m[5:7]}.{m[:4]}",
+                "income": income_by_month.get(m, Decimal(0)),
+                "funds": {name: month_funds[m].get(name, Decimal(0)) for name in fund_names},
+            }
+        )
+
     return render_template(
         "finances/report.html",
         income=income,
@@ -322,6 +387,9 @@ def report():
         total_distributed=total_distributed,
         distributions=distributions,
         categories=categories,
+        fund_names=fund_names,
+        month_rows=month_rows,
+        fund_totals=fund_totals,
         period=period,
         date_from=request.args.get("date_from", ""),
         date_to=request.args.get("date_to", ""),

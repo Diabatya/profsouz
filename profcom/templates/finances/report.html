@@ -121,4 +121,47 @@
     </div>
   </div>
 </div>
+
+<div class="row g-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">Распределение доходов по фондам и месяцам</div>
+      <div class="card-body table-responsive">
+        <table class="table table-sm table-hover text-end">
+          <thead>
+            <tr>
+              <th class="text-start">Месяц</th>
+              <th class="text-start">Поступление</th>
+              {% for name in fund_names %}
+              <th>{{ name }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in month_rows %}
+            <tr>
+              <td class="text-start">{{ row.label }}</td>
+              <td class="text-start">{{ row.income|money }} ₽</td>
+              {% for name in fund_names %}
+              <td>{{ row.funds[name]|money }} ₽</td>
+              {% endfor %}
+            </tr>
+            {% else %}
+            <tr><td colspan="{{ fund_names|length + 2 }}" class="text-muted">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr class="table-primary">
+              <td class="text-start"><strong>Итого</strong></td>
+              <td class="text-start"><strong>{{ income|money }} ₽</strong></td>
+              {% for name in fund_names %}
+              <td><strong>{{ fund_totals[name]|money }} ₽</strong></td>
+              {% endfor %}
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
