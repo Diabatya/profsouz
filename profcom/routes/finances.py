@@ -162,7 +162,13 @@ def _fund_summary(date_from=None, date_to=None):
         return res
 
     cumulative_fund_balances = _build_balances([f.id for f in top_funds], cumulative_in, cumulative_out)
-    return distributions, cumulative_fund_balances
+    primary = next((f for f in top_funds if f.is_primary), top_funds[0] if top_funds else None)
+    primary_balance = (
+        cumulative_in.get(primary.id, Decimal(0)) - cumulative_out.get(primary.id, Decimal(0))
+        if primary
+        else Decimal(0)
+    )
+    return distributions, cumulative_fund_balances, primary_balance
 
 
 @bp.route("/")
@@ -198,18 +204,15 @@ def index():
         .scalar()
         or 0
     )
-    balance = income - expense
-    distributions, cumulative_fund_balances = _fund_summary(date_from, date_to)
+    distributions, cumulative_fund_balances, primary_balance = _fund_summary(date_from, date_to)
     total_distributed = sum(d.total for d in distributions)
-    net = balance - total_distributed
     return render_template(
         "finances/list.html",
         records=pagination.items,
         pagination=pagination,
         income=income,
         expense=expense,
-        balance=balance,
-        net=net,
+        primary_balance=primary_balance,
         total_distributed=total_distributed,
         distributions=distributions,
         cumulative_fund_balances=cumulative_fund_balances,

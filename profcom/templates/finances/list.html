@@ -31,8 +31,8 @@
   <div class="col-md-4">
     <div class="card stat-card h-100">
       <div class="card-body">
-        <h6 class="card-title">Баланс</h6>
-        <p class="display-6 {% if balance >= 0 %}text-success{% else %}text-danger{% endif %}">{{ balance|money }} ₽</p>
+        <h6 class="card-title">Осталось в Первичке</h6>
+        <p class="display-6 {% if primary_balance >= 0 %}text-success{% else %}text-danger{% endif %}">{{ primary_balance|money }} ₽</p>
       </div>
     </div>
   </div>
