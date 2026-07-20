@@ -73,6 +73,68 @@
   </div>
 </div>
 
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Распределение доходов</div>
+      <div class="card-body">
+        <table class="table table-sm table-hover">
+          <thead>
+            <tr><th>Направление</th><th class="text-end">Сумма</th></tr>
+          </thead>
+          <tbody>
+            {% for d in distributions %}
+            <tr>
+              <td>{{ d.name }}</td>
+              <td class="text-end">{{ d.total|money }} ₽</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="2" class="text-muted">Нет данных</td></tr>
+            {% endfor %}
+            <tr class="table-primary">
+              <td><strong>Итого отчислено</strong></td>
+              <td class="text-end"><strong>{{ total_distributed|money }} ₽</strong></td>
+            </tr>
+            <tr class="table-light">
+              <td><strong>Чистый остаток</strong></td>
+              <td class="text-end"><strong>{{ net|money }} ₽</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Балансы фондов с переносом остатков</div>
+      <div class="card-body table-responsive">
+        <table class="table table-sm table-hover text-end">
+          <thead>
+            <tr>
+              <th class="text-start">Фонд</th>
+              <th>Поступило</th>
+              <th>Расход</th>
+              <th>Остаток</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in cumulative_fund_balances %}
+            <tr>
+              <td class="text-start" {% if f.level %}style="padding-left: {{ f.level * 1.5 }}rem"{% endif %}>{% for i in range(f.level) %}— {% endfor %}{{ f.name }}</td>
+              <td>{{ f.in|money }} ₽</td>
+              <td>{{ f.out|money }} ₽</td>
+              <td{% if f.balance < 0 %} class="text-danger"{% endif %}><strong>{{ f.balance|money }} ₽</strong></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-muted">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="card">
   <div class="table-responsive">
     <table class="table table-striped table-hover align-middle mb-0">
