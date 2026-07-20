@@ -338,7 +338,8 @@ def report():
             FinanceDistributionRule.id,
             func.sum(FinanceRecordDistribution.amount).label("total"),
         )
-        .join(FinanceRecord)
+        .select_from(FinanceRecordDistribution)
+        .join(FinanceRecord, FinanceRecordDistribution.record_id == FinanceRecord.id)
         .join(FinanceDistributionRule, FinanceRecordDistribution.rule_id == FinanceDistributionRule.id)
         .filter(FinanceRecord.type == "income")
     )
@@ -379,7 +380,8 @@ def report():
             FinanceDistributionRule.id,
             func.sum(FinanceRecordDistribution.amount).label("total"),
         )
-        .join(FinanceRecord)
+        .select_from(FinanceRecordDistribution)
+        .join(FinanceRecord, FinanceRecordDistribution.record_id == FinanceRecord.id)
         .join(FinanceDistributionRule, FinanceRecordDistribution.rule_id == FinanceDistributionRule.id)
         .filter(FinanceRecord.type == "income")
     )
@@ -457,7 +459,8 @@ def report():
             FinanceDistributionRule.id,
             func.sum(FinanceRecordDistribution.amount).label("total"),
         )
-        .join(FinanceRecord)
+        .select_from(FinanceRecordDistribution)
+        .join(FinanceRecord, FinanceRecordDistribution.record_id == FinanceRecord.id)
         .join(FinanceDistributionRule, FinanceRecordDistribution.rule_id == FinanceDistributionRule.id)
         .filter(FinanceRecord.type == "income")
         .group_by(FinanceDistributionRule.id)
