@@ -225,10 +225,38 @@ def _should_init_db():
 
 
 if _should_init_db():
-    init_db()
+    try:
+        init_db()
+    except Exception:
+        import traceback
+
+        error_msg = traceback.format_exc()
+        with open(os.path.join(base_dir, "startup_error.log"), "w", encoding="utf-8") as f:
+            f.write(error_msg)
+        print(error_msg, file=sys.stderr)
+        raise
+
+
+def _safe_port():
+    if len(sys.argv) > 1:
+        try:
+            return int(sys.argv[1])
+        except ValueError:
+            pass
+    return app.config.get("PORT", 8765)
 
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else app.config.get("PORT", 8765)
-    print(f"Сервер запущен. Откройте http://<ip-адрес>:{port} (локально http://127.0.0.1:{port})")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    try:
+        port = _safe_port()
+        print(f"Сервер запущен. Откройте http://<ip-адрес>:{port} (локально http://127.0.0.1:{port})")
+        sys.stdout.flush()
+        app.run(host="0.0.0.0", port=port, debug=False)
+    except Exception:
+        import traceback
+
+        error_msg = traceback.format_exc()
+        with open(os.path.join(base_dir, "startup_error.log"), "w", encoding="utf-8") as f:
+            f.write(error_msg)
+        print(error_msg, file=sys.stderr)
+        raise
