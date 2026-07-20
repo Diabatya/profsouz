@@ -73,7 +73,7 @@
 <div class="row g-4">
   <div class="col-12">
     <div class="card">
-      <div class="card-header">Балансы фондов</div>
+      <div class="card-header">Балансы фондов с переносом остатков</div>
       <div class="card-body table-responsive">
         <table class="table table-sm table-hover text-end">
           <thead>
@@ -85,7 +85,7 @@
             </tr>
           </thead>
           <tbody>
-            {% for f in fund_balances %}
+            {% for f in cumulative_fund_balances %}
             <tr>
               <td class="text-start" {% if f.level %}style="padding-left: {{ f.level * 1.5 }}rem"{% endif %}>{% for i in range(f.level) %}— {% endfor %}{{ f.name }}</td>
               <td>{{ f.in|money }} ₽</td>
@@ -157,41 +157,46 @@
 <div class="row g-4">
   <div class="col-12">
     <div class="card">
-      <div class="card-header">Распределение доходов по фондам и месяцам</div>
-      <div class="card-body table-responsive">
-        <table class="table table-sm table-hover text-end">
-          <thead>
-            <tr>
-              <th class="text-start">Месяц</th>
-              <th class="text-start">Поступление</th>
-              {% for name in fund_names %}
-              <th>{{ name }}</th>
-              {% endfor %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in month_rows %}
-            <tr>
-              <td class="text-start">{{ row.label }}</td>
-              <td class="text-start">{{ row.income|money }} ₽</td>
-              {% for name in fund_names %}
-              <td>{{ row.funds[name]|money }} ₽</td>
-              {% endfor %}
-            </tr>
-            {% else %}
-            <tr><td colspan="{{ fund_names|length + 2 }}" class="text-muted">Нет данных</td></tr>
-            {% endfor %}
-          </tbody>
-          <tfoot>
-            <tr class="table-primary">
-              <td class="text-start"><strong>Итого</strong></td>
-              <td class="text-start"><strong>{{ income|money }} ₽</strong></td>
-              {% for name in fund_names %}
-              <td><strong>{{ fund_totals[name]|money }} ₽</strong></td>
-              {% endfor %}
-            </tr>
-          </tfoot>
-        </table>
+      <div class="card-header">История финансов по годам</div>
+      <div class="card-body">
+        {% for year, months in year_groups %}
+        <details class="mb-2" {% if loop.last %}open{% endif %}>
+          <summary class="fw-bold">{{ year }}</summary>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover text-end">
+              <thead>
+                <tr>
+                  <th class="text-start">Месяц</th>
+                  <th class="text-start">Поступление</th>
+                  {% for name in fund_names %}
+                  <th>{{ name }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in months %}
+                <tr>
+                  <td class="text-start">{{ row.label }}</td>
+                  <td class="text-start">{{ row.income|money }} ₽</td>
+                  {% for name in fund_names %}
+                  <td>{{ row.funds[name]|money }} ₽</td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+                <tr class="table-primary">
+                  <td class="text-start"><strong>Итого</strong></td>
+                  <td class="text-start"><strong>{% set year_income = months|sum(attribute='income') %}{{ year_income|money }} ₽</strong></td>
+                  {% for name in fund_names %}
+                  <td><strong>{{ months|sum(attribute='funds.' ~ name)|money }} ₽</strong></td>
+                  {% endfor %}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+        {% else %}
+        <p class="text-muted">Нет данных</p>
+        {% endfor %}
       </div>
     </div>
   </div>

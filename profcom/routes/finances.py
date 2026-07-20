@@ -347,18 +347,18 @@ def report():
     for f in active_funds:
         own_in.setdefault(f.id, Decimal(0))
 
-    def _total_in(rule_id, memo=None):
+    def _total_in(rule_id, in_dict, memo=None):
         if memo is None:
             memo = {}
         if rule_id in memo:
             return memo[rule_id]
-        total = own_in.get(rule_id, Decimal(0))
+        total = in_dict.get(rule_id, Decimal(0))
         for child in children.get(rule_id, []):
-            total += _total_in(child.id, memo)
+            total += _total_in(child.id, in_dict, memo)
         memo[rule_id] = total
         return total
 
-    top_total_in = {f.id: _total_in(f.id) for f in top_funds}
+    top_total_in = {f.id: _total_in(f.id, own_in) for f in top_funds}
     total_distributed = sum(top_total_in.values())
     net = balance - total_distributed
 
@@ -444,26 +444,59 @@ def report():
     expense_rows = {r.id: r.total for r in expense_q.group_by(FinanceDistributionRule.id).all()}
     own_out = {f.id: expense_rows.get(f.id, Decimal(0)) for f in active_funds}
 
-    def _build_balances(rule_ids, level=0):
+    cumulative_distribution_q = (
+        db.session.query(
+            FinanceDistributionRule.id,
+            func.sum(FinanceRecordDistribution.amount).label("total"),
+        )
+        .join(FinanceRecord)
+        .join(FinanceDistributionRule, FinanceRecordDistribution.rule_id == FinanceDistributionRule.id)
+        .filter(FinanceRecord.type == "income")
+        .group_by(FinanceDistributionRule.id)
+    )
+    cumulative_in = {r.id: r.total for r in cumulative_distribution_q.all()}
+    for f in active_funds:
+        cumulative_in.setdefault(f.id, Decimal(0))
+
+    cumulative_expense_q = (
+        db.session.query(
+            FinanceDistributionRule.id,
+            func.sum(FinanceRecord.amount).label("total"),
+        )
+        .join(FinanceRecord, FinanceDistributionRule.id == FinanceRecord.fund_id)
+        .filter(FinanceRecord.type == "expense")
+        .group_by(FinanceDistributionRule.id)
+    )
+    cumulative_out = {r.id: r.total for r in cumulative_expense_q.all()}
+    for f in active_funds:
+        cumulative_out.setdefault(f.id, Decimal(0))
+
+    def _build_balances(rule_ids, in_dict, out_dict, level=0):
         res = []
         for rid in rule_ids:
             f = fund_by_id[rid]
-            total = _total_in(rid)
+            total = _total_in(rid, in_dict)
             res.append(
                 {
                     "id": f.id,
                     "name": f.name,
                     "level": level,
                     "in": total,
-                    "out": own_out.get(rid, Decimal(0)),
-                    "balance": total - own_out.get(rid, Decimal(0)),
+                    "out": out_dict.get(rid, Decimal(0)),
+                    "balance": total - out_dict.get(rid, Decimal(0)),
                 }
             )
             if children.get(rid):
-                res.extend(_build_balances([c.id for c in children[rid]], level + 1))
+                res.extend(_build_balances([c.id for c in children[rid]], in_dict, out_dict, level + 1))
         return res
 
-    fund_balances = _build_balances([f.id for f in top_funds])
+    fund_balances = _build_balances([f.id for f in top_funds], own_in, own_out)
+    cumulative_fund_balances = _build_balances([f.id for f in top_funds], cumulative_in, cumulative_out)
+
+    year_groups = defaultdict(list)
+    for row in month_rows:
+        year_groups[row["month"][:4]].append(row)
+    year_groups = sorted(year_groups.items())
 
     return render_template(
         "finances/report.html",
@@ -478,6 +511,8 @@ def report():
         month_rows=month_rows,
         fund_totals=fund_totals,
         fund_balances=fund_balances,
+        cumulative_fund_balances=cumulative_fund_balances,
+        year_groups=year_groups,
         period=period,
         date_from=request.args.get("date_from", ""),
         date_to=request.args.get("date_to", ""),
