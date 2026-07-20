@@ -100,40 +100,6 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">Награды от профсоюза</div>
-      <div class="card-body">
-        {% if member.awards %}
-        <ul class="list-group list-group-flush mb-3">
-          {% for award in member.awards|sort(attribute='issued_at', reverse=true) %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>{{ award.template.name }} <small class="text-muted">{{ award.issued_at|dt }}</small></span>
-            <form method="post" action="{{ url_for('awards.delete_award', id=award.id) }}" class="d-inline delete-form">
-              <button type="submit" class="btn btn-sm btn-outline-danger">{{ icon('trash') }}</button>
-            </form>
-          </li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <p class="text-muted mb-0">Нет наград</p>
-        {% endif %}
-        <form method="post" action="{{ url_for('awards.member_add_award', id=member.id) }}" class="row g-2 align-items-end">
-          <div class="col-md-5">
-            <select name="template_id" class="form-select" required>
-              <option value="">Выберите документ</option>
-              {% for t in award_templates %}
-              <option value="{{ t.id }}">{{ t.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-md-3"><input type="date" name="issued_at" class="form-control" value="{{ today()|iso_date }}"></div>
-          <div class="col-md-2"><input type="text" name="note" class="form-control" placeholder="Примечание"></div>
-          <div class="col-md-2"><button type="submit" class="btn btn-sm btn-success w-100">{{ icon('plus-lg') }}</button></div>
-        </form>
-      </div>
-    </div>
-  </div>
-
   <div class="col-lg-7">
     <div class="card mb-4">
       <div class="card-header d-flex justify-content-between align-items-center">

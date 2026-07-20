@@ -10,8 +10,6 @@ import config
 from models import (
     Admin,
     AnniversarySetting,
-    DocumentTemplate,
-    FinanceDistributionRule,
     Group,
     Organization,
     PayoutType,
@@ -140,51 +138,7 @@ def seed_data():
     if not Group.query.filter_by(name="Профком", type="profkom").first():
         db.session.add(Group(name="Профком", type="profkom"))
 
-    default_templates = [
-        {
-            "name": "Грамота",
-            "type": "award",
-            "title": "Грамота профсоюза",
-            "body": """<div style="display:flex;align-items:center;justify-content:center;height:100%;box-sizing:border-box;padding:20px;">
-  <div style="width:100%;border:14px double #b91c1c;border-radius:8px;background:linear-gradient(180deg,#fffbeb 0%,#ffffff 60%);padding:50px 40px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.08);">
-    <div style="font-size:90px;line-height:1;color:#f59e0b;margin-bottom:20px;">🎖️</div>
-    <h1 style="font-size:52px;color:#b91c1c;text-transform:uppercase;letter-spacing:6px;margin:0 0 10px;">Грамота</h1>
-    <p style="font-size:20px;color:#4b5563;margin-top:30px;">Награждается</p>
-    <h2 style="font-size:36px;color:#111827;margin:25px 0;font-weight:bold;text-decoration:underline;text-decoration-color:#f59e0b;text-decoration-thickness:3px;">{{ member.full_name }}</h2>
-    <p style="font-size:19px;color:#374151;line-height:1.6;max-width:90%;margin:0 auto 45px;">за активное участие в жизни профсоюзной организации,<br>добросовестный труд и высокий профессионализм.</p>
-    <p style="font-size:16px;color:#6b7280;border-top:2px solid #e5e7eb;display:inline-block;padding-top:15px;">Дата выдачи: <strong style="color:#111827;">{{ issued_at|dt }}</strong></p>
-  </div>
-</div>""",
-        },
-        {
-            "name": "Благодарственное письмо",
-            "type": "letter",
-            "title": "Благодарственное письмо",
-            "body": """<div style="height:100%;box-sizing:border-box;padding:55px 60px;font-family:Georgia,serif;font-size:18px;line-height:1.7;color:#111827;background:#ffffff;">
-  <div style="border-bottom:5px solid #1d4ed8;padding-bottom:18px;margin-bottom:55px;">
-    <h2 style="color:#1e40af;margin:0;font-size:32px;">Благодарственное письмо</h2>
-    <p style="color:#6b7280;margin:6px 0 0;font-size:14px;">профсоюзная организация</p>
-  </div>
-  <p style="text-align:right;color:#4b5563;margin-bottom:35px;">{{ issued_at|dt }}</p>
-  <p>Выражаем искреннюю благодарность</p>
-  <p style="font-size:26px;font-weight:bold;color:#1e3a8a;margin:22px 0;">{{ member.full_name }}</p>
-  <p>за активное участие в работе профсоюзной организации, инициативу и поддержку коллег.</p>
-  <p style="margin-top:90px;color:#374151;">Председатель профкома <span style="display:inline-block;width:240px;border-bottom:1px solid #111827;margin-left:10px;"></span></p>
-</div>""",
-        },
-    ]
-    for tpl in default_templates:
-        if not DocumentTemplate.query.filter_by(name=tpl["name"]).first():
-            db.session.add(DocumentTemplate(**tpl))
-
     Organization.get_or_create()
-
-    if not FinanceDistributionRule.query.first():
-        db.session.add(
-            FinanceDistributionRule(
-                name="Первичный профсоюз", percent=100, order=0, active=True, is_primary=True
-            )
-        )
 
     db.session.commit()
 

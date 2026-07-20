@@ -1,8 +1,6 @@
-from collections import defaultdict
-
 from flask import Blueprint, render_template, request
 
-from models import Event, FinanceRecord, Member, Payout, PayoutType
+from models import Member, Payout, PayoutType
 from utils import login_required, parse_date
 
 bp = Blueprint("reports", __name__, url_prefix="/reports")
@@ -43,23 +41,6 @@ def payouts_report():
     return excel_response(headers, rows, "otchet_viplaty.xlsx")
 
 
-@bp.route("/events")
-@login_required
-def events_report():
-    from utils import excel_response
-
-    events = Event.query.order_by(Event.date.desc()).all()
-    headers = ["Дата", "Название", "Протокол", "Расходы", "Помощники"]
-    rows = []
-    for e in events:
-        helpers = ", ".join([m.full_name for m in e.helpers])
-        protocol = e.protocol.number if e.protocol else ""
-        rows.append(
-            [e.date.strftime("%d.%m.%Y"), e.name, protocol, float(e.total_expenses), helpers]
-        )
-    return excel_response(headers, rows, "otchet_meropriyatiya.xlsx")
-
-
 @bp.route("/material_aid")
 @login_required
 def material_aid_report():
@@ -82,31 +63,6 @@ def material_aid_report():
         )
     headers = ["Дата", "Член", "Отдел", "Сумма", "Подписана"]
     return excel_response(headers, rows, "otchet_materialnaya_pomoshch.xlsx")
-
-
-@bp.route("/general")
-@login_required
-def general_report():
-    from utils import excel_response
-
-    records = FinanceRecord.query.order_by(FinanceRecord.date).all()
-    months = defaultdict(lambda: {"income": 0.0, "expense": 0.0})
-    for r in records:
-        key = r.date.strftime("%Y-%m")
-        if r.type == "income":
-            months[key]["income"] += float(r.amount)
-        else:
-            months[key]["expense"] += float(r.amount)
-
-    headers = ["Месяц", "Доходы", "Расходы", "Баланс"]
-    rows = []
-    balance = 0
-    for key in sorted(months.keys()):
-        income = months[key]["income"]
-        expense = months[key]["expense"]
-        balance += income - expense
-        rows.append([key, income, expense, balance])
-    return excel_response(headers, rows, "otchet_finansi.xlsx")
 
 
 @bp.route("/members")

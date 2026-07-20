@@ -18,7 +18,7 @@ from flask import (
 )
 from openpyxl import load_workbook
 
-from models import DocumentTemplate, Group, Member, MemberChild, MemberStatusHistory, Position, db
+from models import Group, Member, MemberChild, MemberStatusHistory, Position, db
 from utils import (
     apply_sort,
     dictionary_values,
@@ -445,8 +445,7 @@ def import_template():
 @login_required
 def detail(id):
     member = db.session.get(Member, id) or abort(404)
-    award_templates = DocumentTemplate.query.filter_by(active=True).order_by(DocumentTemplate.order).all()
-    return render_template("members/detail.html", member=member, award_templates=award_templates)
+    return render_template("members/detail.html", member=member)
 
 
 @bp.route("/<int:id>/photo")

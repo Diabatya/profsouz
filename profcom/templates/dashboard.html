@@ -21,9 +21,9 @@
   <div class="col-12 col-md-6 col-lg-3">
     <div class="card stat-card h-100">
       <div class="card-body">
-        <h6 class="card-title">Мероприятий в этом году</h6>
-        <p class="display-6">{{ events_count }}</p>
-        <a href="{{ url_for('events.index') }}" class="small text-muted">К мероприятиям</a>
+        <h6 class="card-title">Протоколов в этом году</h6>
+        <p class="display-6">{{ protocols_count }}</p>
+        <a href="{{ url_for('protocols.index') }}" class="small text-muted">К протоколам</a>
       </div>
     </div>
   </div>
@@ -130,14 +130,11 @@
             <div class="d-flex flex-column gap-1">
               <a href="{{ url_for('payouts.index') }}" class="text-decoration-none">{{ icon('cash') }} Выплаты</a>
               <a href="{{ url_for('protocols.index') }}" class="text-decoration-none">{{ icon('file-earmark-text') }} Протоколы</a>
-              <a href="{{ url_for('events.index') }}" class="text-decoration-none">{{ icon('calendar-event') }} Мероприятия</a>
-              <a href="{{ url_for('awards.index') }}" class="text-decoration-none">{{ icon('award') }} Награды</a>
             </div>
           </div>
           <div class="list-group-item">
             <div class="small text-uppercase text-muted fw-bold mb-2">Учёт и отчётность</div>
             <div class="d-flex flex-column gap-1">
-              <a href="{{ url_for('finances.index') }}" class="text-decoration-none">{{ icon('wallet') }} Финансы</a>
               <a href="{{ url_for('inventory.index') }}" class="text-decoration-none">{{ icon('box-seam') }} Инвентарь</a>
               <a href="{{ url_for('reports.index') }}" class="text-decoration-none">{{ icon('file-earmark-excel') }} Отчёты</a>
             </div>
@@ -150,7 +147,7 @@
 </div>
 
 <div class="row">
-  <div class="col-lg-6 mb-4">
+  <div class="col-12 mb-4">
     <div class="card h-100">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span><strong>{{ icon('clock-history') }}</strong> Последние действия</span>
@@ -173,27 +170,6 @@
           {% if not recent_members and not recent_payouts %}
           <li class="list-group-item text-center text-muted py-3">Нет недавних действий</li>
           {% endif %}
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-lg-6 mb-4">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><strong>{{ icon('calendar-event') }}</strong> Предстоящие мероприятия</span>
-        <a href="{{ url_for('events.index') }}" class="btn btn-sm btn-outline-primary">Все</a>
-      </div>
-      <div class="card-body p-0">
-        <ul class="list-group list-group-flush">
-          {% for e in upcoming_events %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <a href="{{ url_for('events.detail', id=e.id) }}" class="text-decoration-none">{{ e.name }}</a>
-            <span class="badge bg-light text-dark">{{ e.date|dt }}</span>
-          </li>
-          {% else %}
-          <li class="list-group-item text-center text-muted py-3">Нет предстоящих мероприятий</li>
-          {% endfor %}
         </ul>
       </div>
     </div>

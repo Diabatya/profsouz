@@ -3,7 +3,7 @@ from datetime import date, datetime
 from flask import Blueprint, current_app, render_template, request, send_from_directory, url_for
 from sqlalchemy import func
 
-from models import Event, FinanceRecord, Group, Member, MemberStatusHistory, Payout, db
+from models import Group, Member, MemberStatusHistory, Payout, Protocol, db
 from utils import login_required
 
 bp = Blueprint("main", __name__)
@@ -21,7 +21,7 @@ def birthday_in_year(birth_date, year):
 def dashboard():
     today = date.today()
     total_members = Member.query.filter_by(status="active").count()
-    events_count = Event.query.filter(func.strftime("%Y", Event.date) == str(today.year)).count()
+    protocols_count = Protocol.query.filter(func.strftime("%Y", Protocol.date) == str(today.year)).count()
     total_payouts = db.session.query(func.sum(Payout.amount)).scalar() or 0
 
     department_stats = (
@@ -34,7 +34,6 @@ def dashboard():
 
     recent_members = Member.query.order_by(Member.id.desc()).limit(5).all()
     recent_payouts = Payout.query.order_by(Payout.id.desc()).limit(5).all()
-    upcoming_events = Event.query.filter(Event.date >= today).order_by(Event.date).limit(5).all()
 
     upcoming = []
     active_members = Member.query.filter_by(status="active").all()
@@ -57,12 +56,11 @@ def dashboard():
     return render_template(
         "dashboard.html",
         total_members=total_members,
-        events_count=events_count,
+        protocols_count=protocols_count,
         total_payouts=total_payouts,
         department_stats=department_stats,
         recent_members=recent_members,
         recent_payouts=recent_payouts,
-        upcoming_events=upcoming_events,
         upcoming_birthdays=upcoming,
     )
 
@@ -112,26 +110,6 @@ def timeline():
                 "color": "primary",
                 "text": f"Выплата {float(p.amount)} ₽ — {p.member.full_name}",
                 "link": url_for("payouts.index"),
-            }
-        )
-    for e in Event.query.order_by(Event.date.desc()).limit(20).all():
-        items.append(
-            {
-                "time": datetime.combine(e.date, datetime.min.time()),
-                "icon": "calendar-event",
-                "color": "info",
-                "text": f"Мероприятие: {e.name}",
-                "link": url_for("events.detail", id=e.id),
-            }
-        )
-    for f in FinanceRecord.query.order_by(FinanceRecord.date.desc()).limit(20).all():
-        items.append(
-            {
-                "time": datetime.combine(f.date, datetime.min.time()),
-                "icon": "wallet",
-                "color": "success" if f.type == "income" else "danger",
-                "text": f"{'Доход' if f.type == 'income' else 'Расход'} {float(f.amount)} ₽ — {f.description}",
-                "link": url_for("finances.index"),
             }
         )
     items.sort(key=lambda x: x["time"], reverse=True)

@@ -24,29 +24,9 @@
   <div class="col-md-6 col-lg-4">
     <div class="card h-100">
       <div class="card-body">
-        <h5 class="card-title">{{ icon('calendar-event') }} Мероприятия</h5>
-        <p class="card-text text-muted">Список мероприятий с расходами и помощниками.</p>
-        <a href="{{ url_for('reports.events_report') }}" class="btn btn-outline-primary btn-sm">{{ icon('download') }} Скачать</a>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-md-6 col-lg-4">
-    <div class="card h-100">
-      <div class="card-body">
         <h5 class="card-title">{{ icon('gift') }} Материальная помощь</h5>
         <p class="card-text text-muted">Отчёт по выплатам материальной помощи.</p>
         <a href="{{ url_for('reports.material_aid_report') }}" class="btn btn-outline-primary btn-sm">{{ icon('download') }} Скачать</a>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-md-6 col-lg-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">{{ icon('wallet') }} Общий финансовый</h5>
-        <p class="card-text text-muted">Доходы, расходы и баланс по месяцам.</p>
-        <a href="{{ url_for('reports.general_report') }}" class="btn btn-outline-primary btn-sm">{{ icon('download') }} Скачать</a>
       </div>
     </div>
   </div>

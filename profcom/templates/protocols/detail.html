@@ -26,28 +26,6 @@
   </div>
 
   <div class="col-lg-8">
-    <div class="card mb-4">
-      <div class="card-header">Связанные мероприятия</div>
-      <div class="table-responsive">
-        <table class="table table-hover mb-0">
-          <thead>
-            <tr><th>Дата</th><th>Название</th><th>Сумма расходов</th></tr>
-          </thead>
-          <tbody>
-            {% for e in events %}
-            <tr>
-              <td>{{ e.date|dt }}</td>
-              <td><a href="{{ url_for('events.detail', id=e.id) }}">{{ e.name }}</a></td>
-              <td>{{ e.total_expenses|money }} ₽</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="3" class="text-center text-muted py-3">Нет мероприятий</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
     <div class="card">
       <div class="card-header">Связанные выплаты</div>
       <div class="table-responsive">

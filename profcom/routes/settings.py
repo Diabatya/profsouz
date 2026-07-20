@@ -8,8 +8,6 @@ from models import (
     Admin,
     AnniversarySetting,
     Dictionary,
-    FinanceDistributionRule,
-    FinanceRecord,
     Member,
     Organization,
     PayoutCategory,
@@ -19,8 +17,6 @@ from models import (
     db,
 )
 from utils import login_required, parse_decimal
-
-from .finances import _apply_distribution
 
 bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -297,99 +293,6 @@ def delete_position(id):
     db.session.commit()
     flash("Должность удалена", "success")
     return redirect(url_for("settings.positions"))
-
-
-@bp.route("/finance_distribution_rules")
-@login_required
-def finance_distribution_rules():
-    rules = FinanceDistributionRule.query.order_by(
-        FinanceDistributionRule.order, FinanceDistributionRule.name
-    ).all()
-    return render_template("settings/finance_distribution_rules.html", rules=rules)
-
-
-@bp.route("/finance_distribution_rules/add", methods=["POST"])
-@login_required
-def add_finance_distribution_rule():
-    name = request.form.get("name", "").strip()
-    percent = parse_decimal(request.form.get("percent", "0"))
-    order = request.form.get("order", type=int) or 0
-    active = bool(request.form.get("active"))
-    is_primary = bool(request.form.get("is_primary"))
-    is_bank_commission = bool(request.form.get("is_bank_commission"))
-    parent_id = request.form.get("parent_id", type=int)
-    if name:
-        if is_primary:
-            FinanceDistributionRule.query.update({"is_primary": False})
-            is_bank_commission = False
-        db.session.add(
-            FinanceDistributionRule(
-                name=name,
-                percent=percent,
-                order=order,
-                active=active,
-                is_primary=is_primary,
-                is_bank_commission=is_bank_commission,
-                parent_id=parent_id,
-            )
-        )
-        db.session.commit()
-        for rec in FinanceRecord.query.filter_by(type="income").all():
-            _apply_distribution(rec)
-        db.session.commit()
-        flash("Фонд добавлен", "success")
-    else:
-        flash("Укажите название", "danger")
-    return redirect(url_for("settings.finance_distribution_rules"))
-
-
-@bp.route("/finance_distribution_rules/<int:id>/edit", methods=["POST"])
-@login_required
-def edit_finance_distribution_rule(id):
-    rule = db.session.get(FinanceDistributionRule, id) or abort(404)
-    name = request.form.get("name", "").strip()
-    percent = parse_decimal(request.form.get("percent", "0"))
-    order = request.form.get("order", type=int) or 0
-    active = bool(request.form.get("active"))
-    is_primary = bool(request.form.get("is_primary"))
-    is_bank_commission = bool(request.form.get("is_bank_commission"))
-    if name:
-        if is_primary:
-            FinanceDistributionRule.query.filter(FinanceDistributionRule.id != rule.id).update(
-                {"is_primary": False}
-            )
-            is_bank_commission = False
-        new_parent_id = request.form.get("parent_id", type=int)
-        if new_parent_id == rule.id:
-            new_parent_id = None
-        rule.name = name
-        rule.percent = percent
-        rule.order = order
-        rule.active = active
-        rule.is_primary = is_primary
-        rule.is_bank_commission = is_bank_commission
-        rule.parent_id = new_parent_id
-        db.session.commit()
-        for rec in FinanceRecord.query.filter_by(type="income").all():
-            _apply_distribution(rec)
-        db.session.commit()
-        flash("Фонд обновлён", "success")
-    else:
-        flash("Укажите название", "danger")
-    return redirect(url_for("settings.finance_distribution_rules"))
-
-
-@bp.route("/finance_distribution_rules/<int:id>/delete", methods=["POST"])
-@login_required
-def delete_finance_distribution_rule(id):
-    rule = db.session.get(FinanceDistributionRule, id) or abort(404)
-    db.session.delete(rule)
-    db.session.commit()
-    for rec in FinanceRecord.query.filter_by(type="income").all():
-        _apply_distribution(rec)
-    db.session.commit()
-    flash("Фонд удалён", "success")
-    return redirect(url_for("settings.finance_distribution_rules"))
 
 
 @bp.route("/union_officers")
