@@ -242,6 +242,25 @@ def _parse_date_value(value):
     return parse_date(s)
 
 
+def _is_truthy_cell(value):
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value == 1
+    return str(value).strip().lower() in {"1", "да", "yes", "+", "true"}
+
+
+def _get_or_create_group(name, group_type="category"):
+    group = Group.query.filter_by(name=name, type=group_type).first()
+    if not group:
+        group = Group(name=name, type=group_type)
+        db.session.add(group)
+        db.session.flush()
+    return group
+
+
 @bp.route("/import", methods=["GET", "POST"])
 @login_required
 def import_members():
@@ -256,22 +275,34 @@ def import_members():
         first_row = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
         headers = [str(h).strip() if h else "" for h in first_row]
 
-        mapping = {
+        header_aliases = {
             "ФИО": "full_name",
             "Отдел": "department",
+            "Подразделение": "department",
             "Должность": "position",
+            "Должность в профсоюзе": "union_position",
             "Пол": "gender",
             "Дата рождения": "birth_date",
             "Дата вступления": "entry_date",
         }
+        special_cols = {
+            "М": "male",
+            "Ж": "female",
+            "Декрет": "maternity",
+            "МОП": "mop",
+        }
         col_map = {}
+        special_map = {}
         for i, h in enumerate(headers):
-            if h in mapping:
-                col_map[mapping[h]] = i
+            h = str(h).strip()
+            if h in header_aliases:
+                col_map[header_aliases[h]] = i
+            if h in special_cols:
+                special_map[special_cols[h]] = i
 
         required = ["full_name", "department", "birth_date"]
         if not all(k in col_map for k in required):
-            flash("В файле должны быть колонки: ФИО, Отдел, Дата рождения", "danger")
+            flash("В файле должны быть колонки: ФИО, Подразделение/Отдел, Дата рождения", "danger")
             return redirect(url_for("members.import_members"))
 
         # загружаем текущих членов для поиска дубликатов (с нормализацией)
@@ -282,6 +313,10 @@ def import_members():
         errors = []
         seen_departments = set()
         seen_positions = set()
+        category_groups = {
+            "maternity": _get_or_create_group("Декрет"),
+            "mop": _get_or_create_group("МОП"),
+        }
         try:
             for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 full_name = (
@@ -297,13 +332,25 @@ def import_members():
                     errors.append(f"Строка {row_idx}: не указан отдел")
                     continue
                 birth_date = _parse_date_value(row[col_map["birth_date"]])
-                entry_date = _parse_date_value(row[col_map["entry_date"]])
                 if not birth_date:
                     errors.append(f"Строка {row_idx}: неверная дата рождения")
                     continue
+
+                entry_date = _parse_date_value(row[col_map["entry_date"]]) if "entry_date" in col_map else None
+
                 position = None
                 if "position" in col_map and row[col_map["position"]]:
                     position = str(row[col_map["position"]]).strip() or None
+
+                organization_position_id = None
+                if "union_position" in col_map and row[col_map["union_position"]]:
+                    pos_name = str(row[col_map["union_position"]]).strip()
+                    pos = Position.query.filter_by(name=pos_name, scope="organization").first()
+                    if not pos:
+                        pos = Position(name=pos_name, scope="organization")
+                        db.session.add(pos)
+                        db.session.flush()
+                    organization_position_id = pos.id
 
                 gender = Member.detect_gender(full_name)
                 if "gender" in col_map and row[col_map["gender"]]:
@@ -312,11 +359,17 @@ def import_members():
                         gender = "male"
                     elif g in ("ж", "жен", "женский", "female"):
                         gender = "female"
+                else:
+                    if "male" in special_map and _is_truthy_cell(row[special_map["male"]]):
+                        gender = "male"
+                    elif "female" in special_map and _is_truthy_cell(row[special_map["female"]]):
+                        gender = "female"
 
                 member = _find_existing_member(full_name, existing_map)
                 if member:
                     member.department = department
                     member.position = position
+                    member.organization_position_id = organization_position_id
                     member.birth_date = birth_date
                     member.entry_date = entry_date
                     member.gender = gender
@@ -327,6 +380,7 @@ def import_members():
                         full_name=full_name,
                         department=department,
                         position=position,
+                        organization_position_id=organization_position_id,
                         birth_date=birth_date,
                         entry_date=entry_date,
                         status="active",
@@ -337,6 +391,16 @@ def import_members():
                     existing_map[_normalize_full_name(full_name)] = member
                     note = "Импорт из Excel"
                     created += 1
+
+                # категории/группы
+                for key, group in category_groups.items():
+                    col = special_map.get(key)
+                    is_set = _is_truthy_cell(row[col]) if col is not None and col < len(row) else False
+                    if is_set and group not in member.groups:
+                        member.groups.append(group)
+                    elif not is_set and group in member.groups:
+                        member.groups.remove(group)
+
                 seen_departments.add(department)
                 if position:
                     seen_positions.add(position)
@@ -372,15 +436,8 @@ def import_members():
 def import_template():
     from utils import excel_response
 
-    headers = ["ФИО", "Отдел", "Должность", "Пол", "Дата рождения", "Дата вступления"]
-    example = [
-        "Иванов Иван Иванович",
-        "Отдел кадров",
-        "Член профкома",
-        "муж",
-        "1985-03-15",
-        "2020-01-10",
-    ]
+    headers = ["№", "Кол-во", "Код", "Подразделение", "ФИО", "М", "Ж", "Декрет", "МОП", "Дата рождения"]
+    example = [1, 1, "00", "Руководство", "Иванов Иван Иванович", 1, "", "", "", date(1985, 3, 15)]
     return excel_response(headers, [example], "shablon_importa.xlsx")
 
 
