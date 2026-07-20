@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from decimal import Decimal
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
@@ -296,20 +296,6 @@ def report():
         or 0
     )
 
-    distribution_q = db.session.query(
-        FinanceRecordDistribution.name,
-        func.sum(FinanceRecordDistribution.amount).label("total"),
-    ).join(FinanceRecord)
-    if date_from:
-        distribution_q = distribution_q.filter(FinanceRecord.date >= date_from)
-    if date_to:
-        distribution_q = distribution_q.filter(FinanceRecord.date <= date_to)
-    distributions = (
-        distribution_q.group_by(FinanceRecordDistribution.name)
-        .order_by(func.sum(FinanceRecordDistribution.amount).desc())
-        .all()
-    )
-
     category_q = db.session.query(
         FinanceRecord.type,
         FinanceRecord.category,
@@ -325,24 +311,68 @@ def report():
         .all()
     )
 
-    total_distributed = sum(d.total for d in distributions) if distributions else 0
     balance = income - expense
-    net = balance - total_distributed
 
     active_funds = (
         FinanceDistributionRule.query.filter_by(active=True)
         .order_by(FinanceDistributionRule.order, FinanceDistributionRule.name)
         .all()
     )
-    active_names = [f.name for f in active_funds]
+    fund_by_id = {f.id: f for f in active_funds}
+    children = {f.id: [] for f in active_funds}
+    for f in active_funds:
+        if f.parent_id and f.parent_id in fund_by_id:
+            children[f.parent_id].append(f)
+    top_funds = [f for f in active_funds if not f.parent_id]
+
+    distribution_q = (
+        db.session.query(
+            FinanceDistributionRule.id,
+            func.sum(FinanceRecordDistribution.amount).label("total"),
+        )
+        .join(FinanceRecord)
+        .join(FinanceDistributionRule, FinanceRecordDistribution.rule_id == FinanceDistributionRule.id)
+        .filter(FinanceRecord.type == "income")
+    )
+    if date_from:
+        distribution_q = distribution_q.filter(FinanceRecord.date >= date_from)
+    if date_to:
+        distribution_q = distribution_q.filter(FinanceRecord.date <= date_to)
+    distribution_rows = (
+        distribution_q.group_by(FinanceDistributionRule.id)
+        .order_by(FinanceDistributionRule.order, FinanceDistributionRule.name)
+        .all()
+    )
+    own_in = {r.id: r.total for r in distribution_rows}
+    for f in active_funds:
+        own_in.setdefault(f.id, Decimal(0))
+
+    def _total_in(rule_id, memo=None):
+        if memo is None:
+            memo = {}
+        if rule_id in memo:
+            return memo[rule_id]
+        total = own_in.get(rule_id, Decimal(0))
+        for child in children.get(rule_id, []):
+            total += _total_in(child.id, memo)
+        memo[rule_id] = total
+        return total
+
+    top_total_in = {f.id: _total_in(f.id) for f in top_funds}
+    total_distributed = sum(top_total_in.values())
+    net = balance - total_distributed
+
+    Distribution = namedtuple("Distribution", ["name", "total"])
+    distributions = [Distribution(name=f.name, total=top_total_in[f.id]) for f in top_funds]
 
     monthly_q = (
         db.session.query(
             func.strftime("%Y-%m", FinanceRecord.date).label("month"),
-            FinanceRecordDistribution.name,
+            FinanceDistributionRule.id,
             func.sum(FinanceRecordDistribution.amount).label("total"),
         )
         .join(FinanceRecord)
+        .join(FinanceDistributionRule, FinanceRecordDistribution.rule_id == FinanceDistributionRule.id)
         .filter(FinanceRecord.type == "income")
     )
     if date_from:
@@ -350,7 +380,7 @@ def report():
     if date_to:
         monthly_q = monthly_q.filter(FinanceRecord.date <= date_to)
     monthly_rows = (
-        monthly_q.group_by("month", FinanceRecordDistribution.name)
+        monthly_q.group_by("month", FinanceDistributionRule.id)
         .order_by("month")
         .all()
     )
@@ -371,31 +401,37 @@ def report():
         for r in income_monthly_q.group_by("month").order_by("month").all()
     }
 
-    month_funds = defaultdict(lambda: defaultdict(lambda: Decimal(0)))
-    fund_totals = defaultdict(lambda: Decimal(0))
-    all_names = set(active_names)
+    month_own = defaultdict(lambda: defaultdict(lambda: Decimal(0)))
     for r in monthly_rows:
-        month_funds[r.month][r.name] = r.total
-        fund_totals[r.name] += r.total
-        all_names.add(r.name)
+        month_own[r.month][r.id] = r.total
 
-    fund_names = [n for n in active_names if n in all_names]
-    fund_names.extend(sorted(all_names - set(active_names)))
+    def _month_total_in(month, rule_id, memo=None):
+        if memo is None:
+            memo = {}
+        if rule_id in memo:
+            return memo[rule_id]
+        total = month_own[month].get(rule_id, Decimal(0))
+        for child in children.get(rule_id, []):
+            total += _month_total_in(month, child.id, memo)
+        memo[rule_id] = total
+        return total
 
+    fund_names = [f.name for f in top_funds]
+    fund_totals = {f.name: top_total_in[f.id] for f in top_funds}
     month_rows = []
-    for m in sorted(set(income_by_month.keys()) | set(month_funds.keys())):
+    for m in sorted(set(income_by_month.keys()) | set(month_own.keys())):
         month_rows.append(
             {
                 "month": m,
                 "label": f"{m[5:7]}.{m[:4]}",
                 "income": income_by_month.get(m, Decimal(0)),
-                "funds": {name: month_funds[m].get(name, Decimal(0)) for name in fund_names},
+                "funds": {f.name: _month_total_in(m, f.id) for f in top_funds},
             }
         )
 
     expense_q = (
         db.session.query(
-            FinanceDistributionRule.name,
+            FinanceDistributionRule.id,
             func.sum(FinanceRecord.amount).label("total"),
         )
         .join(FinanceRecord, FinanceDistributionRule.id == FinanceRecord.fund_id)
@@ -405,20 +441,29 @@ def report():
         expense_q = expense_q.filter(FinanceRecord.date >= date_from)
     if date_to:
         expense_q = expense_q.filter(FinanceRecord.date <= date_to)
-    expenses_by_fund = {r.name: r.total for r in expense_q.group_by(FinanceDistributionRule.name).all()}
+    expense_rows = {r.id: r.total for r in expense_q.group_by(FinanceDistributionRule.id).all()}
+    own_out = {f.id: expense_rows.get(f.id, Decimal(0)) for f in active_funds}
 
-    fund_balances = []
-    for name in fund_names:
-        in_amt = fund_totals.get(name, Decimal(0))
-        out_amt = expenses_by_fund.get(name, Decimal(0)) or Decimal(0)
-        fund_balances.append(
-            {
-                "name": name,
-                "in": in_amt,
-                "out": out_amt,
-                "balance": in_amt - out_amt,
-            }
-        )
+    def _build_balances(rule_ids, level=0):
+        res = []
+        for rid in rule_ids:
+            f = fund_by_id[rid]
+            total = _total_in(rid)
+            res.append(
+                {
+                    "id": f.id,
+                    "name": f.name,
+                    "level": level,
+                    "in": total,
+                    "out": own_out.get(rid, Decimal(0)),
+                    "balance": total - own_out.get(rid, Decimal(0)),
+                }
+            )
+            if children.get(rid):
+                res.extend(_build_balances([c.id for c in children[rid]], level + 1))
+        return res
+
+    fund_balances = _build_balances([f.id for f in top_funds])
 
     return render_template(
         "finances/report.html",

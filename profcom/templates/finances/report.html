@@ -87,7 +87,7 @@
           <tbody>
             {% for f in fund_balances %}
             <tr>
-              <td class="text-start">{{ f.name }}</td>
+              <td class="text-start" {% if f.level %}style="padding-left: {{ f.level * 1.5 }}rem"{% endif %}>{% for i in range(f.level) %}— {% endfor %}{{ f.name }}</td>
               <td>{{ f.in|money }} ₽</td>
               <td>{{ f.out|money }} ₽</td>
               <td{% if f.balance < 0 %} class="text-danger"{% endif %}><strong>{{ f.balance|money }} ₽</strong></td>

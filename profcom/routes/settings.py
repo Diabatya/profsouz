@@ -316,6 +316,7 @@ def add_finance_distribution_rule():
     active = bool(request.form.get("active"))
     is_primary = bool(request.form.get("is_primary"))
     is_bank_commission = bool(request.form.get("is_bank_commission"))
+    parent_id = request.form.get("parent_id", type=int)
     if name:
         if is_primary:
             FinanceDistributionRule.query.update({"is_primary": False})
@@ -327,6 +328,7 @@ def add_finance_distribution_rule():
                 active=active,
                 is_primary=is_primary,
                 is_bank_commission=is_bank_commission,
+                parent_id=parent_id,
             )
         )
         db.session.commit()
@@ -351,12 +353,16 @@ def edit_finance_distribution_rule(id):
             FinanceDistributionRule.query.filter(FinanceDistributionRule.id != rule.id).update(
                 {"is_primary": False}
             )
+        new_parent_id = request.form.get("parent_id", type=int)
+        if new_parent_id == rule.id:
+            new_parent_id = None
         rule.name = name
         rule.percent = percent
         rule.order = order
         rule.active = active
         rule.is_primary = is_primary
         rule.is_bank_commission = is_bank_commission
+        rule.parent_id = new_parent_id
         db.session.commit()
         for rec in FinanceRecord.query.filter_by(type="income").all():
             _apply_distribution(rec)

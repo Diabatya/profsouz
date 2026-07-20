@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {% from 'base.html' import icon %}
-{% block title %}Фонды и распределение{% endblock %}
+{% block title %}% распределения финансов{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">Фонды и распределение от валовой суммы</h1>
+  <h1 class="h3 mb-0">% распределения финансов</h1>
   <a href="{{ url_for('settings.index') }}" class="btn btn-outline-secondary">{{ icon('arrow-left') }} Назад</a>
 </div>
 
@@ -32,9 +32,17 @@
           <label class="form-check-label" for="is_bank_commission">Комиссия</label>
         </div>
       </div>
+      <div class="col-md-2">
+        <select name="parent_id" class="form-select">
+          <option value="">Без родителя</option>
+          {% for r in rules %}
+          <option value="{{ r.id }}">{{ r.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <div class="col-md-1"><button type="submit" class="btn btn-sm btn-success w-100">{{ icon('plus-lg') }}</button></div>
     </form>
-    <div class="form-text text-muted">Сумма дохода автоматически делится между фондами по указанным процентам. Основной фонд подставляется по умолчанию в расходах.</div>
+    <div class="form-text text-muted">Укажите процент от валовой суммы. Дочерний фонд входит в состав родительского: например, Первичка 75% + фонд взаимопомощи 5% = итого Первичка 80%. Расходы списываются из выбранного фонда.</div>
   </div>
 </div>
 
@@ -64,6 +72,16 @@
               <input class="form-check-input" type="checkbox" name="is_bank_commission" id="is_bank_commission_{{ rule.id }}" value="1" {% if rule.is_bank_commission %}checked{% endif %}>
               <label class="form-check-label small" for="is_bank_commission_{{ rule.id }}">Комиссия</label>
             </div>
+          </div>
+          <div class="col-md-2">
+            <select name="parent_id" class="form-select">
+              <option value="">Без родителя</option>
+              {% for r in rules %}
+              {% if rule is not defined or r.id != rule.id %}
+              <option value="{{ r.id }}" {% if rule is defined and r.id == rule.parent_id %}selected{% endif %}>{{ r.name }}</option>
+              {% endif %}
+              {% endfor %}
+            </select>
           </div>
           <div class="col-md-1"><button type="submit" class="btn btn-sm btn-primary w-100">{{ icon('floppy') }}</button></div>
           <div class="col-md-1"><button type="submit" class="btn btn-sm btn-outline-danger w-100" formaction="{{ url_for('settings.delete_finance_distribution_rule', id=rule.id) }}" formmethod="post">{{ icon('trash') }}</button></div>

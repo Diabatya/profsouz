@@ -297,6 +297,9 @@ class FinanceDistributionRule(db.Model):
     active = db.Column(db.Boolean, default=True)
     is_primary = db.Column(db.Boolean, default=False)
     is_bank_commission = db.Column(db.Boolean, default=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey("finance_distribution_rule.id"), nullable=True)
+
+    parent = db.relationship("FinanceDistributionRule", remote_side=[id], backref="children")
 
 
 class FinanceRecordDistribution(db.Model):
