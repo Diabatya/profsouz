@@ -179,11 +179,21 @@ def migrate_db():
 
     try:
         inspector = inspect(db.engine)
-        cols = [c["name"] for c in inspector.get_columns("member")]
-        if "photo_path" not in cols:
-            db.session.execute(text("ALTER TABLE member ADD COLUMN photo_path VARCHAR(255)"))
-        if "gender" not in cols:
-            db.session.execute(text("ALTER TABLE member ADD COLUMN gender VARCHAR(10)"))
+        dialect = db.engine.dialect
+        for table in db.metadata.sorted_tables:
+            if not inspector.has_table(table.name):
+                continue
+            existing_cols = {c["name"] for c in inspector.get_columns(table.name)}
+            for col in table.columns:
+                if col.name in existing_cols:
+                    continue
+                col_type = col.type.compile(dialect=dialect)
+                sql = f"ALTER TABLE {table.name} ADD COLUMN {col.name} {col_type}"
+                try:
+                    db.session.execute(text(sql))
+                    app.logger.info("Добавлена колонка %s.%s", table.name, col.name)
+                except Exception as col_e:
+                    app.logger.warning("Не удалось добавить колонку %s.%s: %s", table.name, col.name, col_e)
         db.session.commit()
     except Exception as e:
         app.logger.warning("Миграция БД пропущена: %s", e)
