@@ -1,5 +1,6 @@
 from .auth import bp as auth_bp
 from .birthdays import bp as birthdays_bp
+from .finances import bp as finances_bp
 from .inventory import bp as inventory_bp
 from .main import bp as main_bp
 from .members import bp as members_bp
@@ -19,3 +20,4 @@ def register_blueprints(app):
     app.register_blueprint(reports_bp)
     app.register_blueprint(birthdays_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(finances_bp)

@@ -47,7 +47,6 @@ class Member(db.Model):
         lazy="dynamic",
         order_by="MemberStatusHistory.changed_at.desc()",
     )
-    helper_events = db.relationship("Event", secondary="event_helper", back_populates="helpers")
 
     @property
     def is_active(self):
@@ -200,7 +199,6 @@ class Protocol(db.Model):
     total_amount = db.Column(db.Numeric(12, 2), default=0)
     file_path = db.Column(db.String(300), nullable=True)
 
-    events = db.relationship("Event", backref="protocol", lazy="dynamic")
     payouts = db.relationship("Payout", backref="protocol", lazy="dynamic")
 
 
@@ -217,39 +215,6 @@ class Payout(db.Model):
 
     type = db.relationship("PayoutType", backref="payouts")
     category = db.relationship("PayoutCategory", backref="payouts")
-
-
-class Event(db.Model):
-    __tablename__ = "event"
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
-    date = db.Column(db.Date, nullable=False)
-    protocol_id = db.Column(db.Integer, db.ForeignKey("protocol.id"), nullable=True)
-    file_path = db.Column(db.String(300), nullable=True)
-
-    expenses = db.relationship(
-        "EventExpense", backref="event", lazy="dynamic", cascade="all, delete-orphan"
-    )
-    helpers = db.relationship("Member", secondary="event_helper", back_populates="helper_events")
-
-    @property
-    def total_expenses(self):
-        return sum((e.amount for e in self.expenses), 0)
-
-
-class EventExpense(db.Model):
-    __tablename__ = "event_expense"
-    id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey("event.id"), nullable=False)
-    article = db.Column(db.String(200), nullable=False)
-    amount = db.Column(db.Numeric(10, 2), nullable=False)
-
-
-event_helper = db.Table(
-    "event_helper",
-    db.Column("event_id", db.Integer, db.ForeignKey("event.id"), primary_key=True),
-    db.Column("member_id", db.Integer, db.ForeignKey("member.id"), primary_key=True),
-)
 
 
 class MemberStatusHistory(db.Model):
@@ -272,36 +237,6 @@ class Dictionary(db.Model):
     __table_args__ = (db.UniqueConstraint("type", "value", name="uq_dict_type_value"),)
 
 
-class FinanceRecord(db.Model):
-    __tablename__ = "finance_record"
-    id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.Date, nullable=False)
-    description = db.Column(db.String(300), nullable=False)
-    amount = db.Column(db.Numeric(12, 2), nullable=False)
-    type = db.Column(db.String(20), nullable=False)
-    category = db.Column(db.String(50), default="прочее")
-    fund_id = db.Column(db.Integer, db.ForeignKey("finance_distribution_rule.id"), nullable=True)
-
-    distributions = db.relationship(
-        "FinanceRecordDistribution", backref="record", lazy="dynamic", cascade="all, delete-orphan"
-    )
-    expense_fund = db.relationship("FinanceDistributionRule", foreign_keys=[fund_id])
-
-
-class FinanceDistributionRule(db.Model):
-    __tablename__ = "finance_distribution_rule"
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    percent = db.Column(db.Numeric(5, 2), nullable=False, default=0)
-    order = db.Column(db.Integer, default=0)
-    active = db.Column(db.Boolean, default=True)
-    is_primary = db.Column(db.Boolean, default=False)
-    is_bank_commission = db.Column(db.Boolean, default=False)
-    parent_id = db.Column(db.Integer, db.ForeignKey("finance_distribution_rule.id"), nullable=True)
-
-    parent = db.relationship("FinanceDistributionRule", remote_side=[id], backref="children")
-
-
 class Organization(db.Model):
     __tablename__ = "organization"
     id = db.Column(db.Integer, primary_key=True)
@@ -322,17 +257,6 @@ class Organization(db.Model):
             db.session.add(org)
             db.session.commit()
         return org
-
-
-class FinanceRecordDistribution(db.Model):
-    __tablename__ = "finance_record_distribution"
-    id = db.Column(db.Integer, primary_key=True)
-    record_id = db.Column(db.Integer, db.ForeignKey("finance_record.id"), nullable=False)
-    rule_id = db.Column(db.Integer, db.ForeignKey("finance_distribution_rule.id"), nullable=True)
-    name = db.Column(db.String(100), nullable=False)
-    amount = db.Column(db.Numeric(12, 2), nullable=False)
-
-    rule = db.relationship("FinanceDistributionRule")
 
 
 class InventoryItem(db.Model):
@@ -387,65 +311,84 @@ class UnionOfficer(db.Model):
     member = db.relationship("Member", backref="officer_roles")
 
 
-class DocumentTemplate(db.Model):
-    __tablename__ = "document_template"
+class FinanceYear(db.Model):
+    __tablename__ = "finance_year"
     id = db.Column(db.Integer, primary_key=True)
-    type = db.Column(db.String(30), nullable=False, default="award")
-    name = db.Column(db.String(100), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    body = db.Column(db.Text, nullable=False, default="")
-    image_path = db.Column(db.String(300), nullable=True)
-    pptx_path = db.Column(db.String(300), nullable=True)
-    pptx_shape_map = db.Column(db.Text, nullable=True)
-    order = db.Column(db.Integer, default=0)
-    active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=db.func.now())
-
-    @property
-    def image_url(self):
-        from flask import url_for
-
-        if self.image_path:
-            return url_for("main.uploaded_file", filename=self.image_path)
-        return None
-
-    @property
-    def pptx_url(self):
-        from flask import url_for
-
-        if self.pptx_path:
-            return url_for("main.uploaded_file", filename=self.pptx_path)
-        return None
-
-    @property
-    def shape_map(self):
-        import json
-
-        return json.loads(self.pptx_shape_map) if self.pptx_shape_map else {}
-
-    @shape_map.setter
-    def shape_map(self, value):
-        import json
-
-        self.pptx_shape_map = json.dumps(value, ensure_ascii=False)
-
-    @property
-    def is_pptx(self):
-        return bool(self.pptx_path)
-
-    def render(self, context):
-        from flask import current_app
-
-        return current_app.jinja_env.from_string(self.body or "").render(context)
-
-
-class MemberAward(db.Model):
-    __tablename__ = "member_award"
-    id = db.Column(db.Integer, primary_key=True)
-    member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
-    template_id = db.Column(db.Integer, db.ForeignKey("document_template.id"), nullable=False)
-    issued_at = db.Column(db.Date, nullable=False)
+    year = db.Column(db.Integer, nullable=False, unique=True)
+    ppo_opening = db.Column(db.Numeric(12, 2), default=0)
+    charity_opening = db.Column(db.Numeric(12, 2), default=0)
+    mpo_percent = db.Column(db.Numeric(5, 2), default=15)
+    opo_percent = db.Column(db.Numeric(5, 2), default=10)
+    ppo_percent = db.Column(db.Numeric(5, 2), default=70)
+    charity_percent = db.Column(db.Numeric(5, 2), default=5)
     note = db.Column(db.String(300), nullable=True)
 
-    member = db.relationship("Member", backref="awards")
-    template = db.relationship("DocumentTemplate")
+    months = db.relationship(
+        "FinanceMonth", backref="year", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    expenses = db.relationship(
+        "FinanceExpense", backref="year", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    commissions = db.relationship(
+        "FinanceCommission", backref="year", lazy="dynamic", cascade="all, delete-orphan"
+    )
+
+    @property
+    def total_opening(self):
+        return self.ppo_opening + self.charity_opening
+
+    @property
+    def percent_total(self):
+        return (
+            self.mpo_percent
+            + self.opo_percent
+            + self.ppo_percent
+            + self.charity_percent
+        )
+
+
+class FinanceMonth(db.Model):
+    __tablename__ = "finance_month"
+    id = db.Column(db.Integer, primary_key=True)
+    year_id = db.Column(db.Integer, db.ForeignKey("finance_year.id"), nullable=False)
+    month = db.Column(db.Integer, nullable=False)
+    gross_amount = db.Column(db.Numeric(12, 2), default=0)
+    mpo_amount = db.Column(db.Numeric(12, 2), default=0)
+    opo_amount = db.Column(db.Numeric(12, 2), default=0)
+    ppo_amount = db.Column(db.Numeric(12, 2), default=0)
+    charity_amount = db.Column(db.Numeric(12, 2), default=0)
+    date_received = db.Column(db.Date, nullable=True)
+
+    __table_args__ = (
+        db.UniqueConstraint("year_id", "month", name="uq_finance_month_year_month"),
+    )
+
+
+class FinanceExpense(db.Model):
+    __tablename__ = "finance_expense"
+    id = db.Column(db.Integer, primary_key=True)
+    year_id = db.Column(db.Integer, db.ForeignKey("finance_year.id"), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    fund = db.Column(db.String(20), nullable=False, default="ppo")
+    protocol_number = db.Column(db.String(50), nullable=True)
+    protocol_date = db.Column(db.Date, nullable=True)
+    protocol_id = db.Column(db.Integer, db.ForeignKey("protocol.id"), nullable=True)
+    description = db.Column(db.String(300), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    created_at = db.Column(db.DateTime, default=func.now())
+
+    __table_args__ = (
+        db.CheckConstraint("fund IN ('ppo', 'charity')", name="ck_finance_expense_fund"),
+    )
+    protocol = db.relationship("Protocol", backref="finance_expenses")
+
+
+class FinanceCommission(db.Model):
+    __tablename__ = "finance_commission"
+    id = db.Column(db.Integer, primary_key=True)
+    year_id = db.Column(db.Integer, db.ForeignKey("finance_year.id"), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    description = db.Column(db.String(300), nullable=True)
+    created_at = db.Column(db.DateTime, default=func.now())
+

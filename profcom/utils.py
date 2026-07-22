@@ -26,10 +26,17 @@ def login_required(f):
 def parse_date(s):
     if not s:
         return None
-    try:
-        return datetime.strptime(s, "%Y-%m-%d").date()
-    except ValueError:
-        return None
+    if isinstance(s, date):
+        return s
+    if isinstance(s, datetime):
+        return s.date()
+    s = str(s).strip()
+    for fmt in ("%d.%m.%Y", "%d-%m-%Y", "%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
 
 
 def parse_decimal(s):

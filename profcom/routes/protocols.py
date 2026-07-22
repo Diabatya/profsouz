@@ -13,7 +13,7 @@ from flask import (
     url_for,
 )
 
-from models import Event, Payout, Protocol, db
+from models import Payout, Protocol, db
 from utils import apply_sort, login_required, parse_date, parse_decimal
 
 bp = Blueprint("protocols", __name__, url_prefix="/protocols")
@@ -76,10 +76,9 @@ def add():
 @login_required
 def detail(id):
     protocol = db.session.get(Protocol, id) or abort(404)
-    events = protocol.events.order_by(Event.date.desc()).all()
     payouts = protocol.payouts.order_by(Payout.date.desc()).all()
     return render_template(
-        "protocols/detail.html", protocol=protocol, events=events, payouts=payouts
+        "protocols/detail.html", protocol=protocol, payouts=payouts
     )
 
 
@@ -104,8 +103,6 @@ def delete(id):
     if protocol.file_path and os.path.exists(protocol.file_path):
         os.remove(protocol.file_path)
 
-    for e in protocol.events:
-        e.protocol_id = None
     for p in protocol.payouts:
         p.protocol_id = None
 

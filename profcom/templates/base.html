@@ -147,6 +147,8 @@
           <a class="sidebar-link {% if request.endpoint == 'payouts.index' %}active{% endif %}" href="{{ url_for('payouts.index') }}">{{ icon('cash') }} Выплаты</a>
           <a class="sidebar-link {% if request.endpoint == 'protocols.index' %}active{% endif %}" href="{{ url_for('protocols.index') }}">{{ icon('file-earmark-text') }} Протоколы</a>
 
+          <a class="sidebar-link {% if request.endpoint and request.endpoint.startswith('finances.') %}active{% endif %}" href="{{ url_for('finances.index') }}">{{ icon('cash') }} Финансы</a>
+
           <a class="sidebar-link {% if request.endpoint == 'inventory.index' %}active{% endif %}" href="{{ url_for('inventory.index') }}">{{ icon('box-seam') }} Инвентарь</a>
           <a class="sidebar-link {% if request.endpoint == 'reports.index' %}active{% endif %}" href="{{ url_for('reports.index') }}">{{ icon('file-earmark-excel') }} Отчёты</a>
 
