@@ -77,9 +77,7 @@ def add():
 def detail(id):
     protocol = db.session.get(Protocol, id) or abort(404)
     payouts = protocol.payouts.order_by(Payout.date.desc()).all()
-    return render_template(
-        "protocols/detail.html", protocol=protocol, payouts=payouts
-    )
+    return render_template("protocols/detail.html", protocol=protocol, payouts=payouts)
 
 
 @bp.route("/<int:id>/pdf")

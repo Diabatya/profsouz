@@ -21,7 +21,9 @@ def birthday_in_year(birth_date, year):
 def dashboard():
     today = date.today()
     total_members = Member.query.filter_by(status="active").count()
-    protocols_count = Protocol.query.filter(func.strftime("%Y", Protocol.date) == str(today.year)).count()
+    protocols_count = Protocol.query.filter(
+        func.strftime("%Y", Protocol.date) == str(today.year)
+    ).count()
     total_payouts = db.session.query(func.sum(Payout.amount)).scalar() or 0
 
     department_stats = (

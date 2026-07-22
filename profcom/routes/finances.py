@@ -71,9 +71,7 @@ def _year_totals(year):
         (c.amount for c in year.commissions.all()),
         Decimal(0),
     )
-    ppo_closing = (
-        year.ppo_opening + ppo_income - expenses_ppo - commissions
-    )
+    ppo_closing = year.ppo_opening + ppo_income - expenses_ppo - commissions
     charity_closing = year.charity_opening + charity_income - expenses_charity
     return {
         "gross": total_gross,
@@ -150,9 +148,9 @@ def index():
         totals = _year_totals(year)
         expenses_by_month = {}
         for e in expenses:
-            expenses_by_month[e.date.month] = expenses_by_month.get(
-                e.date.month, Decimal(0)
-            ) + e.amount
+            expenses_by_month[e.date.month] = (
+                expenses_by_month.get(e.date.month, Decimal(0)) + e.amount
+            )
         chart_raw = [
             (
                 MONTH_NAMES[m.month - 1].title(),
@@ -161,7 +159,9 @@ def index():
             )
             for m in months
         ]
-        max_val = max([i for _, i, _ in chart_raw] + [e for _, _, e in chart_raw]) if chart_raw else 1
+        max_val = (
+            max([i for _, i, _ in chart_raw] + [e for _, _, e in chart_raw]) if chart_raw else 1
+        )
         for name, inc, exp in chart_raw:
             chart_bars.append(
                 {
@@ -314,7 +314,9 @@ def expense_add():
         flash("Заполните дату, сумму и фонд", "danger")
         return redirect(url_for("finances.index", year_id=year.id))
 
-    protocol = _find_protocol(protocol_number, protocol_date) if protocol_number or protocol_date else None
+    protocol = (
+        _find_protocol(protocol_number, protocol_date) if protocol_number or protocol_date else None
+    )
     if protocol and not protocol_date:
         protocol_date = protocol.date
     if not description:
@@ -534,9 +536,7 @@ def export(year_id):
 
     ws_income = wb.active
     ws_income.title = "Поступления"
-    ws_income.append(
-        ["Месяц", "Валовый сбор", "МПО", "ОПО", "ППО", "Благотворительный фонд"]
-    )
+    ws_income.append(["Месяц", "Валовый сбор", "МПО", "ОПО", "ППО", "Благотворительный фонд"])
     for m in year.months.order_by(FinanceMonth.month).all():
         ws_income.append(
             [
@@ -560,9 +560,7 @@ def export(year_id):
     )
 
     ws_expenses = wb.create_sheet("Расходы")
-    ws_expenses.append(
-        ["Дата", "Фонд", "Протокол", "Дата протокола", "Описание", "Сумма"]
-    )
+    ws_expenses.append(["Дата", "Фонд", "Протокол", "Дата протокола", "Описание", "Сумма"])
     for e in year.expenses.order_by(FinanceExpense.date).all():
         ws_expenses.append(
             [
@@ -578,9 +576,7 @@ def export(year_id):
     ws_commissions = wb.create_sheet("Комиссии")
     ws_commissions.append(["Дата", "Сумма", "Описание"])
     for c in year.commissions.order_by(FinanceCommission.date).all():
-        ws_commissions.append(
-            [c.date.isoformat(), float(c.amount), c.description]
-        )
+        ws_commissions.append([c.date.isoformat(), float(c.amount), c.description])
 
     ws_summary = wb.create_sheet("Сводка")
     ws_summary.append(["Показатель", "Сумма"])

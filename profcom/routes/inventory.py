@@ -36,14 +36,12 @@ def index():
         all_items = q.all()
         if alert == "warranty":
             filtered = [
-                i for i in all_items
+                i
+                for i in all_items
                 if i.warranty_until and i.warranty_until <= today + timedelta(days=30)
             ]
         else:
-            filtered = [
-                i for i in all_items
-                if i.write_off_until and i.write_off_until <= today
-            ]
+            filtered = [i for i in all_items if i.write_off_until and i.write_off_until <= today]
         per_page = max(per_page, 5)
         start = (page - 1) * per_page
         end = start + per_page

@@ -339,12 +339,7 @@ class FinanceYear(db.Model):
 
     @property
     def percent_total(self):
-        return (
-            self.mpo_percent
-            + self.opo_percent
-            + self.ppo_percent
-            + self.charity_percent
-        )
+        return self.mpo_percent + self.opo_percent + self.ppo_percent + self.charity_percent
 
 
 class FinanceMonth(db.Model):
@@ -359,9 +354,7 @@ class FinanceMonth(db.Model):
     charity_amount = db.Column(db.Numeric(12, 2), default=0)
     date_received = db.Column(db.Date, nullable=True)
 
-    __table_args__ = (
-        db.UniqueConstraint("year_id", "month", name="uq_finance_month_year_month"),
-    )
+    __table_args__ = (db.UniqueConstraint("year_id", "month", name="uq_finance_month_year_month"),)
 
 
 class FinanceExpense(db.Model):
@@ -391,4 +384,3 @@ class FinanceCommission(db.Model):
     amount = db.Column(db.Numeric(12, 2), nullable=False)
     description = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, default=func.now())
-

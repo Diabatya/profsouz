@@ -336,7 +336,11 @@ def import_members():
                     errors.append(f"Строка {row_idx}: неверная дата рождения")
                     continue
 
-                entry_date = _parse_date_value(row[col_map["entry_date"]]) if "entry_date" in col_map else None
+                entry_date = (
+                    _parse_date_value(row[col_map["entry_date"]])
+                    if "entry_date" in col_map
+                    else None
+                )
 
                 position = None
                 if "position" in col_map and row[col_map["position"]]:
@@ -395,7 +399,9 @@ def import_members():
                 # категории/группы
                 for key, group in category_groups.items():
                     col = special_map.get(key)
-                    is_set = _is_truthy_cell(row[col]) if col is not None and col < len(row) else False
+                    is_set = (
+                        _is_truthy_cell(row[col]) if col is not None and col < len(row) else False
+                    )
                     if is_set and group not in member.groups:
                         member.groups.append(group)
                     elif not is_set and group in member.groups:
@@ -436,7 +442,18 @@ def import_members():
 def import_template():
     from utils import excel_response
 
-    headers = ["№", "Кол-во", "Код", "Подразделение", "ФИО", "М", "Ж", "Декрет", "МОП", "Дата рождения"]
+    headers = [
+        "№",
+        "Кол-во",
+        "Код",
+        "Подразделение",
+        "ФИО",
+        "М",
+        "Ж",
+        "Декрет",
+        "МОП",
+        "Дата рождения",
+    ]
     example = [1, 1, "00", "Руководство", "Иванов Иван Иванович", 1, "", "", "", date(1985, 3, 15)]
     return excel_response(headers, [example], "shablon_importa.xlsx")
 

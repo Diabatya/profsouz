@@ -167,7 +167,9 @@ def migrate_db():
                     db.session.execute(text(sql))
                     app.logger.info("Добавлена колонка %s.%s", table.name, col.name)
                 except Exception as col_e:
-                    app.logger.warning("Не удалось добавить колонку %s.%s: %s", table.name, col.name, col_e)
+                    app.logger.warning(
+                        "Не удалось добавить колонку %s.%s: %s", table.name, col.name, col_e
+                    )
         db.session.commit()
     except Exception as e:
         app.logger.warning("Миграция БД пропущена: %s", e)
@@ -233,7 +235,9 @@ def _safe_port():
 if __name__ == "__main__":
     try:
         port = _safe_port()
-        print(f"Сервер запущен. Откройте http://<ip-адрес>:{port} (локально http://127.0.0.1:{port})")
+        print(
+            f"Сервер запущен. Откройте http://<ip-адрес>:{port} (локально http://127.0.0.1:{port})"
+        )
         sys.stdout.flush()
         app.run(host="0.0.0.0", port=port, debug=False)
     except Exception:
