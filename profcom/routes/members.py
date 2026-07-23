@@ -365,9 +365,40 @@ def _parse_import_preview(file_storage):
 @login_required
 def import_members():
     if request.method == "POST":
+        file = request.files.get("file")
+        preview = None
+        error = None
+        if file:
+            if not file.filename.lower().endswith(".xlsx"):
+                flash("Загрузите файл Excel (.xlsx)", "danger")
+                return redirect(url_for("members.import_members"))
+            preview, error = _parse_import_preview(file)
+            if error:
+                flash(error, "danger")
+                return redirect(url_for("members.import_members"))
+
         action = request.form.get("action") or "save"
         if action == "save":
-            row_count = request.form.get("row_count", type=int) or 0
+            if preview is not None:
+                rows = preview
+            else:
+                row_count = request.form.get("row_count", type=int) or 0
+                rows = []
+                for i in range(row_count):
+                    rows.append(
+                        {
+                            "full_name": request.form.get(f"full_name_{i}", ""),
+                            "department": request.form.get(f"department_{i}", ""),
+                            "position": request.form.get(f"position_{i}", ""),
+                            "union_position": request.form.get(f"union_position_{i}", ""),
+                            "gender": request.form.get(f"gender_{i}", ""),
+                            "birth_date": request.form.get(f"birth_date_{i}", ""),
+                            "entry_date": request.form.get(f"entry_date_{i}", ""),
+                            "maternity": request.form.get(f"maternity_{i}") == "1",
+                            "mop": request.form.get(f"mop_{i}") == "1",
+                        }
+                    )
+
             created = 0
             updated = 0
             errors = []
@@ -379,16 +410,16 @@ def import_members():
                 "mop": _get_or_create_group("МОП"),
             }
             try:
-                for i in range(row_count):
-                    full_name = request.form.get(f"full_name_{i}", "").strip()
-                    department = request.form.get(f"department_{i}", "").strip()
-                    position = request.form.get(f"position_{i}", "").strip() or None
-                    union_position_name = request.form.get(f"union_position_{i}", "").strip()
-                    gender = request.form.get(f"gender_{i}", "")
-                    birth_date = _parse_date_value(request.form.get(f"birth_date_{i}", ""))
-                    entry_date = _parse_date_value(request.form.get(f"entry_date_{i}", ""))
+                for idx, row in enumerate(rows, start=1):
+                    full_name = row["full_name"].strip()
+                    department = row["department"].strip()
+                    position = row["position"].strip() or None
+                    union_position_name = row["union_position"].strip()
+                    gender = row["gender"]
+                    birth_date = _parse_date_value(row["birth_date"])
+                    entry_date = _parse_date_value(row["entry_date"])
                     if not full_name or not department or not birth_date:
-                        errors.append(f"Строка {i + 1}: не заполнены обязательные поля")
+                        errors.append(f"Строка {idx}: не заполнены обязательные поля")
                         continue
 
                     member = _find_existing_member(full_name, existing_map)
@@ -428,7 +459,7 @@ def import_members():
                         created += 1
 
                     for key, group in category_groups.items():
-                        is_set = request.form.get(f"{key}_{i}") == "1"
+                        is_set = bool(row[key])
                         if is_set and group not in member.groups:
                             member.groups.append(group)
                         elif not is_set and group in member.groups:
@@ -465,14 +496,6 @@ def import_members():
             flash(msg, "success")
             return redirect(url_for("members.index"))
 
-        file = request.files.get("file")
-        if not file or not file.filename.lower().endswith(".xlsx"):
-            flash("Загрузите файл Excel (.xlsx)", "danger")
-            return redirect(url_for("members.import_members"))
-        preview, error = _parse_import_preview(file)
-        if error:
-            flash(error, "danger")
-            return redirect(url_for("members.import_members"))
         return render_template("members/import.html", preview=preview)
     return render_template("members/import.html")
 
