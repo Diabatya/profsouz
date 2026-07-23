@@ -8,8 +8,18 @@ from models import FinanceMonth, FinanceYear, Member, MemberChild, Payout, Payou
 from utils import login_required, parse_date
 
 MONTH_NAMES = [
-    "январь", "февраль", "март", "апрель", "май", "июнь",
-    "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь",
+    "январь",
+    "февраль",
+    "март",
+    "апрель",
+    "май",
+    "июнь",
+    "июль",
+    "август",
+    "сентябрь",
+    "октябрь",
+    "ноябрь",
+    "декабрь",
 ]
 
 bp = Blueprint("main", __name__)
@@ -34,7 +44,9 @@ def _current_year_finance():
 @login_required
 def dashboard():
     total_members = Member.query.filter(Member.status != "excluded").count()
-    protocols_this_year = Protocol.query.filter(extract("year", Protocol.date) == date.today().year).count()
+    protocols_this_year = Protocol.query.filter(
+        extract("year", Protocol.date) == date.today().year
+    ).count()
     total_payouts = Payout.query.count()
     members_by_department = (
         db.session.query(Member.department, db.func.count(Member.id))
@@ -230,9 +242,7 @@ def search():
         return render_template("search.html", q="", results={})
     like = f"%{q}%"
     members = Member.query.filter(
-        Member.full_name.ilike(like)
-        | Member.department.ilike(like)
-        | Member.position.ilike(like)
+        Member.full_name.ilike(like) | Member.department.ilike(like) | Member.position.ilike(like)
     ).all()
     children = MemberChild.query.join(Member).filter(MemberChild.full_name.ilike(like)).all()
     protocols = Protocol.query.filter(Protocol.number.ilike(like)).all()

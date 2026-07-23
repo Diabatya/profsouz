@@ -337,7 +337,9 @@ def gifts():
                 count += 1
             db.session.commit()
             flash(f"Создано {count} выплат", "success")
-            return redirect(url_for("payouts.gifts", age_from=age_from, age_to=age_to, member_id=member_id))
+            return redirect(
+                url_for("payouts.gifts", age_from=age_from, age_to=age_to, member_id=member_id)
+            )
 
     members = Member.query.filter_by(status="active").order_by(Member.full_name).all()
     return render_template(

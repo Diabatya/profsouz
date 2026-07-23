@@ -139,11 +139,19 @@ def finance_report():
     for m in months:
         income = Decimal(m.gross_amount or 0)
         month_expenses = sum(
-            (e.amount for e in fy.expenses.filter(extract("month", FinanceExpense.date) == m.month).all()),
+            (
+                e.amount
+                for e in fy.expenses.filter(extract("month", FinanceExpense.date) == m.month).all()
+            ),
             Decimal(0),
         )
         month_commissions = sum(
-            (c.amount for c in fy.commissions.filter(extract("month", FinanceCommission.date) == m.month).all()),
+            (
+                c.amount
+                for c in fy.commissions.filter(
+                    extract("month", FinanceCommission.date) == m.month
+                ).all()
+            ),
             Decimal(0),
         )
         month_balance = income - month_expenses - month_commissions

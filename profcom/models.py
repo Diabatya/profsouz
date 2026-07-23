@@ -242,7 +242,10 @@ class MemberComment(db.Model):
     text = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=func.now())
 
-    member = db.relationship("Member", backref=db.backref("comments", lazy="dynamic", order_by="MemberComment.created_at.desc()"))
+    member = db.relationship(
+        "Member",
+        backref=db.backref("comments", lazy="dynamic", order_by="MemberComment.created_at.desc()"),
+    )
 
 
 class Dictionary(db.Model):

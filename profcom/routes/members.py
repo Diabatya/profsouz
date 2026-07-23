@@ -302,9 +302,17 @@ def _parse_import_preview(file_storage):
         full_name = title_name(str(full_name_raw).strip()) if full_name_raw else ""
         department_raw = row[col_map["department"]] if "department" in col_map else None
         department = str(department_raw).strip() if department_raw else ""
-        birth_date = _parse_date_value(row[col_map["birth_date"]]) if "birth_date" in col_map else None
-        entry_date = _parse_date_value(row[col_map["entry_date"]]) if "entry_date" in col_map else None
-        position = str(row[col_map["position"]]).strip() if "position" in col_map and row[col_map["position"]] else ""
+        birth_date = (
+            _parse_date_value(row[col_map["birth_date"]]) if "birth_date" in col_map else None
+        )
+        entry_date = (
+            _parse_date_value(row[col_map["entry_date"]]) if "entry_date" in col_map else None
+        )
+        position = (
+            str(row[col_map["position"]]).strip()
+            if "position" in col_map and row[col_map["position"]]
+            else ""
+        )
         union_position = (
             str(row[col_map["union_position"]]).strip()
             if "union_position" in col_map and row[col_map["union_position"]]
@@ -334,20 +342,22 @@ def _parse_import_preview(file_storage):
         if not birth_date:
             errors.append("дата рождения")
 
-        preview.append({
-            "row_idx": row_idx,
-            "full_name": full_name,
-            "department": department,
-            "position": position,
-            "union_position": union_position,
-            "gender": gender,
-            "birth_date": birth_date.strftime("%Y-%m-%d") if birth_date else "",
-            "entry_date": entry_date.strftime("%Y-%m-%d") if entry_date else "",
-            "maternity": maternity,
-            "mop": mop,
-            "errors": errors,
-            "valid": not errors,
-        })
+        preview.append(
+            {
+                "row_idx": row_idx,
+                "full_name": full_name,
+                "department": department,
+                "position": position,
+                "union_position": union_position,
+                "gender": gender,
+                "birth_date": birth_date.strftime("%Y-%m-%d") if birth_date else "",
+                "entry_date": entry_date.strftime("%Y-%m-%d") if entry_date else "",
+                "maternity": maternity,
+                "mop": mop,
+                "errors": errors,
+                "valid": not errors,
+            }
+        )
     return preview, None
 
 
@@ -384,7 +394,9 @@ def import_members():
                     member = _find_existing_member(full_name, existing_map)
                     organization_position_id = None
                     if union_position_name:
-                        pos = Position.query.filter_by(name=union_position_name, scope="organization").first()
+                        pos = Position.query.filter_by(
+                            name=union_position_name, scope="organization"
+                        ).first()
                         if not pos:
                             pos = Position(name=union_position_name, scope="organization")
                             db.session.add(pos)
@@ -463,6 +475,8 @@ def import_members():
             return redirect(url_for("members.import_members"))
         return render_template("members/import.html", preview=preview)
     return render_template("members/import.html")
+
+
 @bp.route("/import/template")
 @login_required
 def import_template():
@@ -516,7 +530,10 @@ def import_children():
                 col_map[header_aliases[h]] = i
 
         if "child_name" not in col_map or "parent_name" not in col_map:
-            flash("В файле должны быть колонки: ФИО ребенка и ФИО родителя (члена профсоюза)", "danger")
+            flash(
+                "В файле должны быть колонки: ФИО ребенка и ФИО родителя (члена профсоюза)",
+                "danger",
+            )
             return redirect(url_for("members.import_children"))
 
         parents_map = {_normalize_full_name(m.full_name): m for m in Member.query.all()}
