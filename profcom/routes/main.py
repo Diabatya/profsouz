@@ -4,7 +4,17 @@ from decimal import Decimal
 from flask import Blueprint, render_template, request, url_for
 from sqlalchemy import extract
 
-from models import FinanceMonth, FinanceYear, Member, MemberChild, Payout, PayoutType, Protocol, db
+from models import (
+    FinanceMonth,
+    FinanceYear,
+    Group,
+    Member,
+    MemberChild,
+    Payout,
+    PayoutType,
+    Protocol,
+    db,
+)
 from utils import login_required, parse_date
 
 MONTH_NAMES = [
@@ -209,7 +219,7 @@ def dashboard():
         .all()
     )
     member_months = [month_counts.get(i, 0) for i in range(1, 13)]
-    max_month = max(member_months) if member_months else 1
+    max_month = max(member_months) or 1
     member_months_chart = [
         {"month": MONTH_NAMES[i - 1].title(), "count": c, "percent": int(c / max_month * 100)}
         for i, c in enumerate(member_months, start=1)
@@ -323,4 +333,30 @@ def timeline():
         types=types,
         date_from=date_from,
         date_to=date_to,
+    )
+
+
+@bp.route("/public/profkom")
+def public_profkom():
+    gender = request.args.get("gender", "")
+    groups = Group.query.filter_by(type="profkom").order_by(Group.name).all()
+    rank = {
+        "Председатель": 0,
+        "Заместитель председателя": 1,
+        "Секретарь": 2,
+        "Член профкома": 3,
+    }
+    members_by_group = {}
+    for g in groups:
+        members = g.members
+        if gender in ("male", "female"):
+            members = [m for m in members if m.gender_or_detect == gender]
+        members_by_group[g.id] = sorted(
+            members, key=lambda m: rank.get(m.position or "Член профкома", 99)
+        )
+    return render_template(
+        "members/profkom.html",
+        groups=groups,
+        members_by_group=members_by_group,
+        selected_gender=gender,
     )

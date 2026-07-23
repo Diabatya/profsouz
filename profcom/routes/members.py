@@ -365,7 +365,7 @@ def _parse_import_preview(file_storage):
 @login_required
 def import_members():
     if request.method == "POST":
-        action = request.form.get("action", "preview")
+        action = request.form.get("action") or "save"
         if action == "save":
             row_count = request.form.get("row_count", type=int) or 0
             created = 0
