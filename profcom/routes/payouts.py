@@ -1,10 +1,33 @@
 from datetime import date
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    abort,
+    flash,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from sqlalchemy import func
 
-from models import Member, MemberChild, Payout, PayoutCategory, PayoutType, Protocol, db
-from utils import apply_sort, excel_response, login_required, parse_date, parse_decimal, period_bounds
+from models import (
+    Member,
+    MemberChild,
+    Payout,
+    PayoutCategory,
+    PayoutType,
+    Protocol,
+    db,
+)
+from utils import (
+    apply_sort,
+    excel_response,
+    login_required,
+    parse_date,
+    parse_decimal,
+    period_bounds,
+)
 
 bp = Blueprint("payouts", __name__, url_prefix="/payouts")
 

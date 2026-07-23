@@ -4,7 +4,7 @@ from decimal import Decimal
 from flask import Blueprint, render_template, request, url_for
 from sqlalchemy import extract
 
-from models import FinanceMonth, FinanceYear, Member, MemberChild, Payout, Protocol, db
+from models import FinanceMonth, FinanceYear, Member, MemberChild, Payout, PayoutType, Protocol, db
 from utils import login_required, parse_date
 
 MONTH_NAMES = [
@@ -115,7 +115,7 @@ def dashboard():
 
     today = date.today()
     jubilee_count = 0
-    for m in Member.query.filter(Member.status != "excluded", Member.birth_date != None).all():
+    for m in Member.query.filter(Member.status != "excluded", Member.birth_date.is_not(None)).all():
         nb = m.birth_date.replace(year=today.year)
         if nb < today:
             nb = nb.replace(year=today.year + 1)
@@ -145,7 +145,7 @@ def dashboard():
 
     # данные для офлайн-графиков
     age_buckets = {"до 30": 0, "30-39": 0, "40-49": 0, "50-59": 0, "60+": 0}
-    for m in Member.query.filter(Member.status != "excluded", Member.birth_date != None).all():
+    for m in Member.query.filter(Member.status != "excluded", Member.birth_date.is_not(None)).all():
         age = today.year - m.birth_date.year
         if (today.month, today.day) < (m.birth_date.month, m.birth_date.day):
             age -= 1
@@ -190,7 +190,7 @@ def dashboard():
         )
         .filter(
             Member.status != "excluded",
-            Member.entry_date != None,
+            Member.entry_date.is_not(None),
             extract("year", Member.entry_date) == today.year,
         )
         .group_by(extract("month", Member.entry_date))

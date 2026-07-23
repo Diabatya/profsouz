@@ -3,7 +3,6 @@ from io import BytesIO
 
 from flask import (
     Blueprint,
-    abort,
     render_template,
     request,
     send_file,
@@ -40,7 +39,7 @@ def index():
     members = (
         Member.query.filter(
             Member.status != "excluded",
-            Member.birth_date != None,
+            Member.birth_date.is_not(None),
             extract("month", Member.birth_date) == month,
         )
         .order_by(extract("day", Member.birth_date))
@@ -68,7 +67,7 @@ def export():
     members = (
         Member.query.filter(
             Member.status != "excluded",
-            Member.birth_date != None,
+            Member.birth_date.is_not(None),
             extract("month", Member.birth_date) == month,
         )
         .order_by(extract("day", Member.birth_date))
