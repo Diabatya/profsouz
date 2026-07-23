@@ -12,6 +12,10 @@ class Admin(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
+    role = db.Column(db.String(20), default="admin", nullable=True)
+
+    def is_readonly(self):
+        return self.role == "readonly"
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -206,15 +210,18 @@ class Payout(db.Model):
     __tablename__ = "payout"
     id = db.Column(db.Integer, primary_key=True)
     member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
+    child_id = db.Column(db.Integer, db.ForeignKey("member_child.id"), nullable=True)
     type_id = db.Column(db.Integer, db.ForeignKey("payout_type.id"), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey("payout_category.id"), nullable=True)
     protocol_id = db.Column(db.Integer, db.ForeignKey("protocol.id"), nullable=True)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     date = db.Column(db.Date, nullable=False, default=date.today)
     signed = db.Column(db.Boolean, default=False)
+    note = db.Column(db.String(300), nullable=True)
 
     type = db.relationship("PayoutType", backref="payouts")
     category = db.relationship("PayoutCategory", backref="payouts")
+    child = db.relationship("MemberChild", backref="payouts")
 
 
 class MemberStatusHistory(db.Model):
@@ -226,6 +233,16 @@ class MemberStatusHistory(db.Model):
     changed_at = db.Column(db.DateTime, default=func.now())
     exit_date = db.Column(db.Date, nullable=True)
     note = db.Column(db.String(200), nullable=True)
+
+
+class MemberComment(db.Model):
+    __tablename__ = "member_comment"
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=func.now())
+
+    member = db.relationship("Member", backref=db.backref("comments", lazy="dynamic", order_by="MemberComment.created_at.desc()"))
 
 
 class Dictionary(db.Model):
@@ -353,6 +370,7 @@ class FinanceMonth(db.Model):
     ppo_amount = db.Column(db.Numeric(12, 2), default=0)
     charity_amount = db.Column(db.Numeric(12, 2), default=0)
     date_received = db.Column(db.Date, nullable=True)
+    note = db.Column(db.String(200), nullable=True)
 
     __table_args__ = (db.UniqueConstraint("year_id", "month", name="uq_finance_month_year_month"),)
 
@@ -373,7 +391,9 @@ class FinanceExpense(db.Model):
     __table_args__ = (
         db.CheckConstraint("fund IN ('ppo', 'charity')", name="ck_finance_expense_fund"),
     )
-    protocol = db.relationship("Protocol", backref="finance_expenses")
+    protocol = db.relationship(
+        "Protocol", backref=db.backref("finance_expenses", cascade="all, delete-orphan")
+    )
 
 
 class FinanceCommission(db.Model):

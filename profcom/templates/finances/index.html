@@ -1,16 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container-fluid">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <h2>{{ icon('cash') }} Финансы</h2>
-    <div class="d-flex gap-2">
-      {% if year %}
-      <a href="{{ url_for('finances.export', year_id=year.id) }}" class="btn btn-sm btn-outline-success">{{ icon('download') }} Excel</a>
+    <div class="d-flex gap-2 align-items-center">
+      {% if years %}
+      <form method="get" action="{{ url_for('finances.index') }}" class="d-flex">
+        <select name="year_id" class="form-select" onchange="this.form.submit()">
+          {% for y in years %}
+          <option value="{{ y.id }}" {% if year and y.id == year.id %}selected{% endif %}>{{ y.year }}</option>
+          {% endfor %}
+        </select>
+      </form>
       {% endif %}
-      {% if is_admin %}
-      <form method="post" action="{{ url_for('finances.import_excel') }}" enctype="multipart/form-data" class="d-flex gap-2">
-        <input type="file" name="file" accept=".xlsx" class="form-control form-control-sm" required>
-        <button type="submit" class="btn btn-sm btn-outline-primary">Импорт Excel</button>
+      {% if is_admin and year %}
+      <form method="post" action="{{ url_for('finances.year_add') }}" class="d-flex gap-2 align-items-center">
+        <input type="number" name="year" class="form-control" placeholder="Год" required style="width:100px;">
+        <button type="submit" class="btn btn-outline-primary">+ Год</button>
+      </form>
+      <form method="post" action="{{ url_for('finances.year_recalc', id=year.id) }}" class="d-flex" title="Пересчитать остатки от предыдущего года">
+        <button type="submit" class="btn btn-outline-secondary">{{ icon('arrow-repeat') }} Пересчёт</button>
       </form>
       {% endif %}
     </div>
@@ -19,364 +28,103 @@
   {% if not year %}
     <div class="alert alert-info">Нет созданных бюджетных годов.</div>
     {% if is_admin %}
-    <h5>Добавить год</h5>
-    <form method="post" action="{{ url_for('finances.year_add') }}" class="row g-2 align-items-end mb-4">
-      <div class="col-md-1"><input type="number" name="year" class="form-control" placeholder="Год" required></div>
-      <div class="col-md-2"><input type="text" name="ppo_opening" class="form-control" placeholder="Остаток ППО" value="0"></div>
-      <div class="col-md-2"><input type="text" name="charity_opening" class="form-control" placeholder="Остаток фонда" value="0"></div>
-      <div class="col-md-1"><input type="text" name="mpo_percent" class="form-control" value="15" title="МПО %"></div>
-      <div class="col-md-1"><input type="text" name="opo_percent" class="form-control" value="10" title="ОПО %"></div>
-      <div class="col-md-1"><input type="text" name="ppo_percent" class="form-control" value="70" title="ППО %"></div>
-      <div class="col-md-1"><input type="text" name="charity_percent" class="form-control" value="5" title="Фонд %"></div>
-      <div class="col-md-2"><button type="submit" class="btn btn-primary">Добавить год</button></div>
+    <form method="post" action="{{ url_for('finances.year_add') }}" class="row g-2 align-items-end">
+      <div class="col-md-2"><input type="number" name="year" class="form-control" placeholder="Год" required></div>
+      <div class="col-auto"><button type="submit" class="btn btn-primary">Добавить год</button></div>
     </form>
     {% endif %}
   {% else %}
-    <div class="row g-3 mb-3">
-      <div class="col-md-2">
-        <label class="form-label">Год</label>
-        <form method="get" action="{{ url_for('finances.index') }}">
-          <select name="year_id" class="form-select" onchange="this.form.submit()">
-            {% for y in years %}
-            <option value="{{ y.id }}" {% if y.id == year.id %}selected{% endif %}>{{ y.year }}</option>
-            {% endfor %}
-          </select>
-        </form>
-      </div>
-      <div class="col-md-10">
-        {% if is_admin %}
-        <form method="post" action="{{ url_for('finances.year_edit', id=year.id) }}" class="row g-2 align-items-end">
-          <div class="col-md-2"><label class="form-label small">Остаток ППО</label><input type="text" name="ppo_opening" class="form-control" value="{{ year.ppo_opening }}"></div>
-          <div class="col-md-2"><label class="form-label small">Остаток фонда</label><input type="text" name="charity_opening" class="form-control" value="{{ year.charity_opening }}"></div>
-          <div class="col-md-1"><label class="form-label small">МПО %</label><input type="text" name="mpo_percent" class="form-control percent-input" value="{{ year.mpo_percent }}"></div>
-          <div class="col-md-1"><label class="form-label small">ОПО %</label><input type="text" name="opo_percent" class="form-control percent-input" value="{{ year.opo_percent }}"></div>
-          <div class="col-md-1"><label class="form-label small">ППО %</label><input type="text" name="ppo_percent" class="form-control percent-input" value="{{ year.ppo_percent }}"></div>
-          <div class="col-md-1"><label class="form-label small">Фонд %</label><input type="text" name="charity_percent" class="form-control percent-input" value="{{ year.charity_percent }}"></div>
-          <div class="col-md-3"><label class="form-label small">Примечание</label><input type="text" name="note" class="form-control" value="{{ year.note or '' }}"></div>
-          <div class="col-md-2"><button type="submit" class="btn btn-outline-primary">Сохранить год</button><span class="percent-total fw-bold ms-2">100%</span></div>
-        </form>
-        {% endif %}
-      </div>
-    </div>
-
     <div class="row g-3 mb-4">
-      <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="card-title">Всего поступило (валовый)</h6><p class="display-6">{{ totals.gross|money }} ₽</p></div></div></div>
-      <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="card-title">Остаток ППО</h6><p class="display-6">{{ totals.ppo_closing|money }} ₽</p></div></div></div>
-      <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="card-title">Остаток фонда</h6><p class="display-6">{{ totals.charity_closing|money }} ₽</p></div></div></div>
-      <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="card-title">Остаток всего</h6><p class="display-6">{{ totals.total_closing|money }} ₽</p></div></div></div>
+      <div class="col-md-4"><div class="card stat-card h-100"><div class="card-body"><h6 class="card-title">Общий доход</h6><p class="display-6">{{ totals.income|money }} ₽</p></div></div></div>
+      <div class="col-md-4"><div class="card stat-card h-100"><div class="card-body"><h6 class="card-title">Общий расход</h6><p class="display-6">{{ totals.expenses|money }} ₽</p></div></div></div>
+      <div class="col-md-4"><div class="card stat-card h-100"><div class="card-body"><h6 class="card-title">Текущий баланс</h6><p class="display-6">{{ totals.balance|money }} ₽</p></div></div></div>
     </div>
 
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header"><strong>История годов</strong></div>
-          <div class="card-body p-0">
-            <table class="table table-sm mb-1">
-              <thead><tr><th>Год</th><th>Остаток ППО на начало</th><th>Остаток фонда на начало</th><th>Всего поступило</th><th>Всего расходов</th><th>Остаток ППО</th><th>Остаток фонда</th><th>Остаток всего</th></tr></thead>
-              <tbody>
-                {% for y, yt in year_summaries %}
-                <tr>
-                  <td><a href="{{ url_for('finances.index', year_id=y.id) }}">{{ y.year }}</a></td>
-                  <td>{{ y.ppo_opening|money }} ₽</td>
-                  <td>{{ y.charity_opening|money }} ₽</td>
-                  <td>{{ yt.gross|money }} ₽</td>
-                  <td>{{ (yt.expenses_ppo + yt.expenses_charity + yt.commissions)|money }} ₽</td>
-                  <td>{{ yt.ppo_closing|money }} ₽</td>
-                  <td>{{ yt.charity_closing|money }} ₽</td>
-                  <td>{{ yt.total_closing|money }} ₽</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header"><strong>Распределение 100% валового сбора</strong></div>
-          <div class="card-body p-0">
-            <table class="table table-sm mb-0 text-center">
-              <thead><tr><th>Статья</th><th>%</th><th>Сумма</th></tr></thead>
-              <tbody>
-                <tr><td>МПО</td><td>{{ year.mpo_percent }} %</td><td>{{ totals.mpo|money }} ₽</td></tr>
-                <tr><td>ОПО</td><td>{{ year.opo_percent }} %</td><td>{{ totals.opo|money }} ₽</td></tr>
-                <tr><td>ППО</td><td>{{ year.ppo_percent }} %</td><td>{{ totals.ppo_income|money }} ₽</td></tr>
-                <tr><td>Благотворительный фонд</td><td>{{ year.charity_percent }} %</td><td>{{ totals.charity_income|money }} ₽</td></tr>
-                <tr class="table-secondary fw-bold"><td>Всего</td><td>100 %</td><td>{{ totals.gross|money }} ₽</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header"><strong>Поступления по месяцам</strong></div>
-          <div class="card-body p-0">
-            <table class="table table-sm table-striped mb-0">
-              <thead><tr><th>Месяц</th><th>Валовый сбор</th><th>МПО</th><th>ОПО</th><th>ППО</th><th>Фонд</th></tr></thead>
-              <tbody>
-                {% for m in months %}
-                <tr>
-                  <td>{{ month_names[m.month-1]|title }}</td>
-                  <td>{{ m.gross_amount|money }} ₽</td>
-                  <td>{{ m.mpo_amount|money }} ₽</td>
-                  <td>{{ m.opo_amount|money }} ₽</td>
-                  <td>{{ m.ppo_amount|money }} ₽</td>
-                  <td>{{ m.charity_amount|money }} ₽</td>
-                </tr>
-                {% endfor %}
-                <tr class="table-primary fw-bold">
-                  <td>Итого</td>
-                  <td>{{ totals.gross|money }} ₽</td>
-                  <td>{{ totals.mpo|money }} ₽</td>
-                  <td>{{ totals.opo|money }} ₽</td>
-                  <td>{{ totals.ppo_income|money }} ₽</td>
-                  <td>{{ totals.charity_income|money }} ₽</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header"><strong>График поступлений и расходов по месяцам</strong></div>
-          <div class="card-body">
-            <div class="d-flex align-items-end" style="height: 220px;">
-              {% for bar in chart_bars %}
-              <div class="text-center" style="flex:1; min-width: 35px;">
-                <div class="d-flex flex-column justify-content-end" style="height: 100%;">
-                  <div class="w-100 income-bar bg-primary rounded-top" data-height="{{ bar.income_h }}"></div>
-                  <div class="w-100 expense-bar bg-danger rounded-bottom" data-height="{{ bar.expense_h }}"></div>
-                </div>
-                <small>{{ bar.name }}</small>
-              </div>
-              {% endfor %}
-            </div>
-            <div class="mt-2">
-              <span class="badge bg-primary">Поступления</span>
-              <span class="badge bg-danger">Расходы</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {% if is_admin %}
-    <div class="row g-2 mb-4">
-      <div class="col-12">
-        <h5>Добавить поступление за месяц</h5>
-        <form method="post" action="{{ url_for('finances.month_save') }}" class="row g-2 align-items-end">
-          <input type="hidden" name="year_id" value="{{ year.id }}">
-          <div class="col-md-2"><select name="month" class="form-select" required>
-            {% for i in range(1, 13) %}<option value="{{ i }}">{{ month_names[i-1]|title }}</option>{% endfor %}
-          </select></div>
-          <div class="col-md-3"><input type="text" name="gross_amount" class="form-control" placeholder="Валовый сбор" required></div>
-          <div class="col-md-3"><input type="text" name="date_received" class="form-control" placeholder="дд.мм.гггг"></div>
-          <div class="col-md-2"><button type="submit" class="btn btn-primary">Сохранить</button></div>
-        </form>
-      </div>
-    </div>
-    {% endif %}
-
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header"><strong>Расходы ППО</strong></div>
-          <div class="card-body p-0">
-            <table class="table table-sm mb-0">
-              <thead><tr><th>Дата</th><th>Протокол</th><th>Назначение</th><th>Сумма</th>{% if is_admin %}<th></th>{% endif %}</tr></thead>
-              <tbody>
-                {% for e in expenses %}{% if e.fund == 'ppo' %}
-                <tr>
-                  <td>{{ e.date|dt }}</td>
-                  <td>{% if e.protocol_number %}№{{ e.protocol_number }}{% if e.protocol_date %} от {{ e.protocol_date|dt }}{% endif %}{% else %}-{% endif %}</td>
-                  <td>{{ e.description }}</td>
-                  <td>{{ e.amount|money }} ₽</td>
-                  {% if is_admin %}<td>
-                    <form method="post" action="{{ url_for('finances.expense_delete', id=e.id) }}" style="display:inline">
-                      <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить?')">×</button>
+    <div class="card mb-4">
+      <div class="card-header"><strong>{{ year.year }} год</strong></div>
+      <div class="card-body p-0 table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead>
+            <tr>
+              <th style="min-width:120px;">Месяц</th>
+              <th style="min-width:180px;">Доходы</th>
+              <th>Расходы</th>
+              <th class="text-end" style="min-width:120px;">Баланс</th>
+              <th class="text-end" style="min-width:140px;">Итог с начала года</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in month_rows %}
+            <tr>
+              <td>
+                <strong>{{ row.name }}</strong>
+                {% if row.fm and row.fm.note %}<br><small class="text-muted">{{ row.fm.note }}</small>{% endif %}
+              </td>
+              <td>
+                {% if is_admin %}
+                <form method="post" action="{{ url_for('finances.month_save') }}" class="row g-1 align-items-center">
+                  <input type="hidden" name="year_id" value="{{ year.id }}">
+                  <input type="hidden" name="month" value="{{ row.month }}">
+                  <div class="col"><input type="text" name="income" class="form-control form-control-sm" value="{{ row.income }}"></div>
+                  <div class="col-auto"><button type="submit" class="btn btn-sm btn-primary" title="Сохранить">{{ icon('floppy') }}</button></div>
+                </form>
+                {% else %}
+                {{ row.income|money }} ₽
+                {% endif %}
+              </td>
+              <td>
+                <ul class="list-unstyled mb-0">
+                  {% for e in row.expenses %}
+                  <li class="d-flex justify-content-between align-items-start gap-2 mb-1 small">
+                    <span>{% if e.protocol_id %}{{ icon('lock') }} {% endif %}{{ e.description }} — {{ e.amount|money }} ₽</span>
+                    {% if is_admin %}
+                    <form method="post" action="{{ url_for('finances.expense_delete', id=e.id) }}" class="d-inline">
+                      <button type="submit" class="btn btn-sm btn-link text-danger p-0" {% if e.protocol_id %}onclick="return confirm('Удалить протокол №{{ e.protocol_number }} и связанный расход?')"{% else %}onclick="return confirm('Удалить расход?')"{% endif %} title="Удалить">{{ icon('trash') }}</button>
                     </form>
-                  </td>{% endif %}
-                </tr>
-                {% endif %}{% endfor %}
-                <tr class="table-secondary fw-bold"><td colspan="{% if is_admin %}4{% else %}3{% endif %}">Итого расходов ППО</td><td>{{ totals.expenses_ppo|money }} ₽</td>{% if is_admin %}<td></td>{% endif %}</tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    {% endif %}
+                  </li>
+                  {% else %}
+                  <li class="text-muted small">—</li>
+                  {% endfor %}
+                </ul>
+                {% if is_admin %}
+                <form method="post" action="{{ url_for('finances.expense_add') }}" class="row g-1 mt-1 add-expense-form" style="display:none;">
+                  <input type="hidden" name="year_id" value="{{ year.id }}">
+                  <input type="hidden" name="month" value="{{ row.month }}">
+                  <div class="col"><input type="text" name="description" class="form-control form-control-sm" placeholder="описание" required></div>
+                  <div class="col-4"><input type="text" name="amount" class="form-control form-control-sm" placeholder="сумма" required></div>
+                  <div class="col-auto"><button type="submit" class="btn btn-sm btn-success" title="Добавить">+</button></div>
+                </form>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-1 btn-add-expense">+ Добавить расход</button>
+                {% endif %}
+              </td>
+              <td class="text-end">{{ row.balance|money }} ₽</td>
+              <td class="text-end">{{ row.cumulative|money }} ₽</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-light fw-bold">
+            <tr>
+              <td>Итого</td>
+              <td>{{ totals.income|money }} ₽</td>
+              <td>{{ totals.expenses|money }} ₽</td>
+              <td class="text-end">{{ totals.balance|money }} ₽</td>
+              <td class="text-end">{{ totals.balance|money }} ₽</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
-
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header"><strong>Расходы благотворительного фонда</strong></div>
-          <div class="card-body p-0">
-            <table class="table table-sm mb-0">
-              <thead><tr><th>Дата</th><th>Протокол</th><th>Назначение</th><th>Сумма</th>{% if is_admin %}<th></th>{% endif %}</tr></thead>
-              <tbody>
-                {% for e in expenses %}{% if e.fund == 'charity' %}
-                <tr>
-                  <td>{{ e.date|dt }}</td>
-                  <td>{% if e.protocol_number %}№{{ e.protocol_number }}{% if e.protocol_date %} от {{ e.protocol_date|dt }}{% endif %}{% else %}-{% endif %}</td>
-                  <td>{{ e.description }}</td>
-                  <td>{{ e.amount|money }} ₽</td>
-                  {% if is_admin %}<td>
-                    <form method="post" action="{{ url_for('finances.expense_delete', id=e.id) }}" style="display:inline">
-                      <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить?')">×</button>
-                    </form>
-                  </td>{% endif %}
-                </tr>
-                {% endif %}{% endfor %}
-                <tr class="table-secondary fw-bold"><td colspan="{% if is_admin %}4{% else %}3{% endif %}">Итого расходов фонда</td><td>{{ totals.expenses_charity|money }} ₽</td>{% if is_admin %}<td></td>{% endif %}</tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {% if is_admin %}
-    <div class="row g-2 mb-4">
-      <div class="col-12">
-        <h5>Добавить расход</h5>
-        <form method="post" action="{{ url_for('finances.expense_add') }}" class="row g-2 align-items-end">
-          <input type="hidden" name="year_id" value="{{ year.id }}">
-          <div class="col-md-2"><input type="text" name="date" class="form-control" placeholder="дд.мм.гггг" required></div>
-          <div class="col-md-2"><select name="fund" class="form-select" required>
-            <option value="ppo">ППО</option>
-            <option value="charity">Благотворительный фонд</option>
-          </select></div>
-          <div class="col-md-2"><input type="text" name="protocol_number" class="form-control" placeholder="№ протокола"></div>
-          <div class="col-md-2"><input type="text" name="protocol_date" class="form-control" placeholder="дата протокола"></div>
-          <div class="col-md-2"><input type="text" name="description" class="form-control" placeholder="назначение"></div>
-          <div class="col-md-1"><input type="text" name="amount" class="form-control" placeholder="сумма" required></div>
-          <div class="col-md-1"><button type="submit" class="btn btn-primary">+</button></div>
-        </form>
-      </div>
-    </div>
-    {% endif %}
-
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header"><strong>Банковская комиссия</strong></div>
-          <div class="card-body p-0">
-            <table class="table table-sm mb-0">
-              <thead><tr><th>Дата</th><th>Описание</th><th>Сумма</th>{% if is_admin %}<th></th>{% endif %}</tr></thead>
-              <tbody>
-                {% for c in commissions %}
-                <tr>
-                  <td>{{ c.date|dt }}</td>
-                  <td>{{ c.description }}</td>
-                  <td>{{ c.amount|money }} ₽</td>
-                  {% if is_admin %}<td>
-                    <form method="post" action="{{ url_for('finances.commission_delete', id=c.id) }}" style="display:inline">
-                      <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить?')">×</button>
-                    </form>
-                  </td>{% endif %}
-                </tr>
-                {% endfor %}
-                <tr class="table-secondary fw-bold"><td colspan="{% if is_admin %}4{% else %}3{% endif %}">Итого комиссий</td><td>{{ totals.commissions|money }} ₽</td>{% if is_admin %}<td></td>{% endif %}</tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {% if is_admin %}
-    <div class="row g-2 mb-4">
-      <div class="col-12">
-        <h5>Добавить комиссию</h5>
-        <form method="post" action="{{ url_for('finances.commission_add') }}" class="row g-2 align-items-end">
-          <input type="hidden" name="year_id" value="{{ year.id }}">
-          <div class="col-md-3"><input type="text" name="date" class="form-control" placeholder="дд.мм.гггг" required></div>
-          <div class="col-md-3"><input type="text" name="amount" class="form-control" placeholder="сумма" required></div>
-          <div class="col-md-4"><input type="text" name="description" class="form-control" placeholder="описание"></div>
-          <div class="col-md-2"><button type="submit" class="btn btn-primary">+</button></div>
-        </form>
-      </div>
-    </div>
-    {% endif %}
-
-    {% if is_admin %}
-    <div class="row mb-4">
-      <div class="col-12">
-        <h5>Добавить новый год</h5>
-        <form method="post" action="{{ url_for('finances.year_add') }}" class="row g-2 align-items-end">
-          <div class="col-md-1"><input type="number" name="year" class="form-control" placeholder="Год" required></div>
-          <div class="col-md-2"><input type="text" name="ppo_opening" class="form-control" placeholder="Остаток ППО" value="0"></div>
-          <div class="col-md-2"><input type="text" name="charity_opening" class="form-control" placeholder="Остаток фонда" value="0"></div>
-          <div class="col-md-1"><input type="text" name="mpo_percent" class="form-control percent-input" value="15" title="МПО %"></div>
-          <div class="col-md-1"><input type="text" name="opo_percent" class="form-control percent-input" value="10" title="ОПО %"></div>
-          <div class="col-md-1"><input type="text" name="ppo_percent" class="form-control percent-input" value="70" title="ППО %"></div>
-          <div class="col-md-1"><input type="text" name="charity_percent" class="form-control percent-input" value="5" title="Фонд %"></div>
-          <div class="col-md-2"><button type="submit" class="btn btn-outline-primary">Добавить год</button><span class="percent-total fw-bold ms-2">100%</span></div>
-          <div class="col-12 form-check mt-1">
-            <input class="form-check-input" type="checkbox" name="auto_carryover" id="auto_carryover" checked>
-            <label class="form-check-label" for="auto_carryover">Автоматически перенести остатки с предыдущего года</label>
-          </div>
-        </form>
-      </div>
-    </div>
-    {% endif %}
   {% endif %}
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  const numberInput = document.querySelector('input[name="protocol_number"]');
-  if (numberInput) {
-    numberInput.addEventListener('change', function () {
-      const num = this.value.trim();
-      if (!num) return;
-      fetch('/finances/protocol-info?number=' + encodeURIComponent(num), {credentials: 'same-origin'})
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          if (data.found) {
-            const dateInput = document.querySelector('input[name="protocol_date"]');
-            const descInput = document.querySelector('input[name="description"]');
-            if (dateInput && !dateInput.value) dateInput.value = data.date;
-            if (descInput && !descInput.value) descInput.value = 'Расход по протоколу №' + data.number;
-          }
-        });
-    });
-  }
-
-  function updatePercentTotal(input) {
-    const form = input.closest('form');
-    const inputs = form.querySelectorAll('.percent-input');
-    let sum = 0;
-    inputs.forEach(function (el) {
-      const v = parseFloat(el.value.replace(',', '.'));
-      sum += isNaN(v) ? 0 : v;
-    });
-    const total = form.querySelector('.percent-total');
-    if (total) {
-      total.textContent = sum.toFixed(0) + '%';
-      total.classList.toggle('text-danger', sum !== 100);
-      total.classList.toggle('text-success', sum === 100);
+document.querySelectorAll('.btn-add-expense').forEach(function(btn) {
+  btn.addEventListener('click', function () {
+    const form = this.previousElementSibling;
+    if (form && form.classList.contains('add-expense-form')) {
+      form.style.display = form.style.display === 'none' ? 'flex' : 'none';
     }
-  }
-
-  document.querySelectorAll('.percent-input').forEach(function (input) {
-    updatePercentTotal(input);
-    input.addEventListener('input', function () { updatePercentTotal(this); });
-  });
-
-  document.querySelectorAll('.income-bar, .expense-bar').forEach(function (bar) {
-    bar.style.height = bar.dataset.height + '%';
   });
 });
 </script>

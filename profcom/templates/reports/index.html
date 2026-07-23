@@ -40,5 +40,18 @@
       </div>
     </div>
   </div>
+
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">{{ icon('cash') }} Финансовый отчёт</h5>
+        <p class="card-text text-muted">Доходы, расходы и нарастающий итог по месяцам.</p>
+        <form method="get" action="{{ url_for('reports.finance_report') }}" class="row g-2">
+          <div class="col-12"><input type="number" name="year" class="form-control form-control-sm" placeholder="Год" value="{{ today().year }}"></div>
+          <div class="col-12"><button type="submit" class="btn btn-outline-primary btn-sm">{{ icon('download') }} Скачать</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

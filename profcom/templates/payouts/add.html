@@ -13,7 +13,7 @@
       <div class="row g-3">
         <div class="col-md-6">
           <label class="form-label">Член профсоюза</label>
-          <select name="member_id" class="form-select" required>
+          <select name="member_id" class="form-select select-search" required>
             <option value="">Выберите</option>
             {% for m in members %}
             <option value="{{ m.id }}" {% if pre_member_id == m.id %}selected{% endif %}>{{ m.full_name }} ({{ m.department }})</option>

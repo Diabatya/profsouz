@@ -111,8 +111,8 @@ def seed_data():
 
     default_types = [
         ("Материальная помощь", 2000),
-        ("Премия к празднику", 0),
         ("Подарок юбиляру", 0),
+        ("Подарок", 0),
     ]
     for name, amount in default_types:
         if not PayoutType.query.filter_by(name=name).first():

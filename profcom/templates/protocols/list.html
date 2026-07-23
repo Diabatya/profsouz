@@ -52,6 +52,7 @@
           </td>
           <td class="text-end">
             <a href="{{ url_for('protocols.detail', id=p.id) }}" class="btn btn-sm btn-outline-primary me-1">{{ icon('eye') }}</a>
+            <a href="{{ url_for('protocols.edit', id=p.id) }}" class="btn btn-sm btn-outline-secondary me-1">{{ icon('pencil') }}</a>
             <form method="post" action="{{ url_for('protocols.delete', id=p.id) }}" class="d-inline delete-form">
               <button type="submit" class="btn btn-sm btn-outline-danger">{{ icon('trash') }}</button>
             </form>

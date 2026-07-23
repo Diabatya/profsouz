@@ -7,10 +7,10 @@ from decimal import Decimal, InvalidOperation
 from functools import wraps
 from io import BytesIO
 
-from flask import redirect, send_file, session, url_for
+from flask import flash, g, redirect, request, send_file, session, url_for
 from openpyxl import Workbook
 
-from models import Dictionary, db
+from models import Admin, Dictionary, db
 
 
 def login_required(f):
@@ -18,6 +18,14 @@ def login_required(f):
     def decorated(*args, **kwargs):
         if "admin_id" not in session:
             return redirect(url_for("auth.login"))
+        admin = db.session.get(Admin, session["admin_id"])
+        if not admin:
+            session.pop("admin_id", None)
+            return redirect(url_for("auth.login"))
+        g.is_readonly = admin.is_readonly()
+        if request.method != "GET" and g.is_readonly:
+            flash("У вас режим только чтения", "danger")
+            return redirect(url_for("main.dashboard"))
         return f(*args, **kwargs)
 
     return decorated

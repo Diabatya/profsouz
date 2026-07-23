@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Импорт детей{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Импорт детей из Excel</h1>
+  <a href="{{ url_for('members.import_members') }}" class="btn btn-outline-secondary">{{ icon('arrow-left') }} Назад</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <p>Загрузите файл <strong>.xlsx</strong> с колонками:</p>
+    <ul>
+      <li><strong>ФИО ребенка</strong> (обязательно)</li>
+      <li><strong>Дата рождения</strong> (необязательно, формат ГГГГ-ММ-ДД или ДД.ММ.ГГГГ)</li>
+      <li><strong>ФИО родителя</strong> — члена профсоюза (обязательно)</li>
+    </ul>
+    <a href="{{ url_for('members.import_children_template') }}" class="btn btn-outline-success">{{ icon('download') }} Скачать шаблон (.xlsx)</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
+      <div class="col-md-8">
+        <label class="form-label">Файл Excel</label>
+        <input type="file" name="file" class="form-control" accept=".xlsx" required>
+      </div>
+      <div class="col-md-4">
+        <button type="submit" class="btn btn-primary">{{ icon('upload') }} Импортировать</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,176 +1,153 @@
-{% extends 'base.html' %}
-{% block title %}Главная — Профсоюз{% endblock %}
+{% extends "base.html" %}
+{% block title %}Главная{% endblock %}
 {% block content %}
-{% from 'base.html' import icon, member_avatar %}
+<div class="container-fluid">
+  <h2 class="mb-4">{{ icon('house') }} Главная</h2>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">Главная</h1>
-  <span class="text-muted">{{ today().strftime('%d.%m.%Y') }}</span>
-</div>
-
-<div class="row g-3 mb-4">
-  <div class="col-12 col-md-6 col-lg-3">
-    <div class="card stat-card h-100">
-      <div class="card-body">
-        <h6 class="card-title">Всего членов</h6>
-        <p class="display-6">{{ total_members }}</p>
-        <a href="{{ url_for('members.index') }}" class="small text-muted">Перейти к списку</a>
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card stat-card h-100 border-start border-4 border-primary">
+        <div class="card-body">
+          <h6 class="card-title text-uppercase text-muted">Общий доход ({{ today().year }})</h6>
+          <p class="display-6 mb-1">{{ finance.income|money }} ₽</p>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="col-12 col-md-6 col-lg-3">
-    <div class="card stat-card h-100">
-      <div class="card-body">
-        <h6 class="card-title">Протоколов в этом году</h6>
-        <p class="display-6">{{ protocols_count }}</p>
-        <a href="{{ url_for('protocols.index') }}" class="small text-muted">К протоколам</a>
+    <div class="col-md-4">
+      <div class="card stat-card h-100 border-start border-4 border-danger">
+        <div class="card-body">
+          <h6 class="card-title text-uppercase text-muted">Общий расход ({{ today().year }})</h6>
+          <p class="display-6 mb-1">{{ finance.expenses|money }} ₽</p>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="col-12 col-md-6 col-lg-3">
-    <div class="card stat-card h-100">
-      <div class="card-body">
-        <h6 class="card-title">Сумма выплат</h6>
-        <p class="display-6">{{ total_payouts|money }} ₽</p>
-        <a href="{{ url_for('payouts.index') }}" class="small text-muted">К выплатам</a>
-      </div>
-    </div>
-  </div>
-  <div class="col-12 col-md-6 col-lg-3">
-    <div class="card stat-card h-100">
-      <div class="card-body">
-        <h6 class="card-title">Ближайшие дни рождения</h6>
-        <p class="display-6">{{ upcoming_birthdays|length }}</p>
-        <a href="{{ url_for('birthdays.index') }}" class="small text-muted">К именинникам</a>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="row">
-  <div class="col-lg-4 mb-4">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><strong>{{ icon('building') }}</strong> Члены по отделам</span>
-        <span class="badge bg-primary">{{ total_members }}</span>
-      </div>
-      <div class="card-body p-0">
-        <ul class="list-group list-group-flush">
-          {% for dept, cnt in department_stats %}
-          {% set pct = (cnt / total_members * 100)|int if total_members else 0 %}
-          <li class="list-group-item">
-            <div class="d-flex justify-content-between small mb-1">
-              <a href="{{ url_for('members.index', dept=dept) }}" class="text-decoration-none">{{ dept }}</a>
-              <span class="text-muted">{{ cnt }} ({{ pct }}%)</span>
-            </div>
-            <div class="progress" style="height: 6px;">
-              <div class="progress-bar" role="progressbar" data-width="{{ pct }}" aria-valuenow="{{ cnt }}" aria-valuemin="0" aria-valuemax="{{ total_members }}"></div>
-            </div>
-          </li>
-          {% else %}
-          <li class="list-group-item text-center text-muted py-3">Нет данных</li>
-          {% endfor %}
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-lg-4 mb-4">
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><strong>{{ icon('gift') }}</strong> Ближайшие дни рождения</span>
-        <a href="{{ url_for('birthdays.index') }}" class="btn btn-sm btn-outline-primary">Все</a>
-      </div>
-      <div class="card-body p-0">
-        <table class="table table-hover mb-0">
-          <thead>
-            <tr>
-              <th>ФИО</th>
-              <th>Дата</th>
-              <th>Возраст</th>
-              <th>Через</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in upcoming_birthdays %}
-            <tr>
-              <td>{{ item.member.full_name }}</td>
-              <td>{{ item.date|dt }}</td>
-              <td>{{ item.age }}</td>
-              <td>{% if item.days == 0 %}сегодня{% else %}{{ item.days }} дн.{% endif %}</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="4" class="text-center text-muted py-3">Нет ближайших дней рождения</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-lg-4 mb-4">
-    <div class="card h-100">
-      <div class="card-header">
-        <span><strong>{{ icon('grid') }}</strong> Рабочий кабинет</span>
-      </div>
-      <div class="card-body p-0">
-        <div class="list-group list-group-flush">
-          <div class="list-group-item">
-            <div class="small text-uppercase text-muted fw-bold mb-2">Люди</div>
-            <div class="d-flex flex-column gap-1">
-              <a href="{{ url_for('members.index') }}" class="text-decoration-none">{{ icon('people') }} Список членов</a>
-              <a href="{{ url_for('members.import_members') }}" class="text-decoration-none">{{ icon('file-earmark-arrow-up') }} Импорт из Excel</a>
-              <a href="{{ url_for('members.profkom') }}" class="text-decoration-none">{{ icon('building') }} Профком</a>
-              <a href="{{ url_for('members.groups') }}" class="text-decoration-none">{{ icon('collection') }} Группы</a>
-              <a href="{{ url_for('birthdays.index') }}" class="text-decoration-none">{{ icon('gift') }} Именинники</a>
-            </div>
-          </div>
-          <div class="list-group-item">
-            <div class="small text-uppercase text-muted fw-bold mb-2">Документы и выплаты</div>
-            <div class="d-flex flex-column gap-1">
-              <a href="{{ url_for('payouts.index') }}" class="text-decoration-none">{{ icon('cash') }} Выплаты</a>
-              <a href="{{ url_for('protocols.index') }}" class="text-decoration-none">{{ icon('file-earmark-text') }} Протоколы</a>
-            </div>
-          </div>
-          <div class="list-group-item">
-            <div class="small text-uppercase text-muted fw-bold mb-2">Учёт и отчётность</div>
-            <div class="d-flex flex-column gap-1">
-              <a href="{{ url_for('inventory.index') }}" class="text-decoration-none">{{ icon('box-seam') }} Инвентарь</a>
-              <a href="{{ url_for('reports.index') }}" class="text-decoration-none">{{ icon('file-earmark-excel') }} Отчёты</a>
-            </div>
-          </div>
+    <div class="col-md-4">
+      <div class="card stat-card h-100 border-start border-4 border-success">
+        <div class="card-body">
+          <h6 class="card-title text-uppercase text-muted">Текущий баланс</h6>
+          <p class="display-6 mb-1">{{ finance.balance|money }} ₽</p>
         </div>
       </div>
     </div>
   </div>
 
-</div>
-
-<div class="row">
-  <div class="col-12 mb-4">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><strong>{{ icon('clock-history') }}</strong> Последние действия</span>
-        <a href="{{ url_for('members.index') }}" class="btn btn-sm btn-outline-primary">Все</a>
+  {% if attention %}
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <div class="card border-start border-4 border-warning">
+        <div class="card-header">{{ icon('exclamation-triangle') }} Требует внимания</div>
+        <div class="card-body p-0">
+          <div class="list-group list-group-flush">
+            {% for item in attention %}
+            <a href="{{ item.url }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 list-group-item-{{ item.css }}">
+              {{ icon(item.icon) }}
+              <span>{{ item.text }}</span>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
       </div>
-      <div class="card-body p-0">
-        <ul class="list-group list-group-flush">
-          {% for m in recent_members %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>{{ member_avatar(m, 32) }} <a href="{{ url_for('members.detail', id=m.id) }}" class="ms-2 text-decoration-none">{{ m.full_name }}</a> <span class="text-muted">— добавлен</span></span>
-            <span class="badge bg-light text-dark">член</span>
-          </li>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100">
+        <div class="card-header">{{ icon('people') }} Возрастной состав</div>
+        <div class="card-body">
+          {% for r in charts.age_ranges %}
+          <div class="mb-2">
+            <div class="d-flex justify-content-between small mb-1"><span>{{ r.label }}</span><span>{{ r.count }}</span></div>
+            <div class="progress" style="height: 8px;">
+              <div class="progress-bar bg-primary" role="progressbar" style="width: {{ r.percent }}%"></div>
+            </div>
+          </div>
           {% endfor %}
-          {% for p in recent_payouts %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>{{ icon('cash') }} <a href="{{ url_for('payouts.index') }}" class="ms-1 text-decoration-none">Выплата {{ p.amount|money }} ₽</a> <span class="text-muted">— {{ p.member.full_name }}</span></span>
-            <span class="badge bg-light text-dark">{{ p.date|dt }}</span>
-          </li>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100">
+        <div class="card-header">{{ icon('cash') }} Выплаты по типам</div>
+        <div class="card-body">
+          {% for t in charts.payouts_by_type %}
+          <div class="mb-2">
+            <div class="d-flex justify-content-between small mb-1"><span>{{ t.name }}</span><span>{{ t.amount|money }} ₽</span></div>
+            <div class="progress" style="height: 8px;">
+              <div class="progress-bar bg-success" role="progressbar" style="width: {{ t.percent }}%"></div>
+            </div>
+          </div>
           {% endfor %}
-          {% if not recent_members and not recent_payouts %}
-          <li class="list-group-item text-center text-muted py-3">Нет недавних действий</li>
-          {% endif %}
-        </ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card h-100">
+        <div class="card-header">{{ icon('graph-up') }} Вступления в {{ today().year }}</div>
+        <div class="card-body">
+          {% for m in charts.member_months %}
+          <div class="mb-2 d-flex align-items-center gap-2 small">
+            <span class="text-nowrap" style="width: 60px;">{{ m.month }}</span>
+            <div class="progress flex-grow-1" style="height: 8px;">
+              <div class="progress-bar bg-info" role="progressbar" style="width: {{ m.percent }}%"></div>
+            </div>
+            <span class="text-nowrap" style="width: 24px;">{{ m.count }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="card h-100">
+        <div class="card-header">Лента операций</div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <tbody>
+                {% for item in timeline %}
+                <tr>
+                  <td class="text-nowrap">{{ item.date|dt }}</td>
+                  <td>
+                    {% if item.type == 'protocol' %}{{ icon('file-earmark-text') }}
+                    {% elif item.type == 'payout' %}{{ icon('cash') }}
+                    {% else %}{{ icon('arrow-down-circle') }}{% endif %}
+                    <a href="{{ item.url }}">{{ item.title }}</a>
+                  </td>
+                  <td class="text-end">{{ item.amount|money }} ₽</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center text-muted py-4">Пока нет операций</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card mb-4">
+        <div class="card-header">Члены по отделам</div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            {% for dept, count in members_by_department %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">{{ dept or '—' }}<span class="badge bg-primary rounded-pill">{{ count }}</span></li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title text-uppercase text-muted small">Всего членов</h6>
+          <p class="display-6 mb-1">{{ total_members }}</p>
+          <h6 class="card-title text-uppercase text-muted small mt-3">Протоколов в этом году</h6>
+          <p class="display-6 mb-1">{{ protocols_this_year }}</p>
+          <h6 class="card-title text-uppercase text-muted small mt-3">Всего выплат</h6>
+          <p class="display-6 mb-1">{{ total_payouts }}</p>
+        </div>
       </div>
     </div>
   </div>

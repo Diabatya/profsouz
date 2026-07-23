@@ -370,3 +370,51 @@ def organization():
         flash("Данные организации сохранены", "success")
         return redirect(url_for("settings.organization"))
     return render_template("settings/organization.html", org=org)
+
+
+@bp.route("/users")
+@login_required
+def users():
+    return render_template("settings/users.html", users=Admin.query.order_by(Admin.username).all())
+
+
+@bp.route("/users/add", methods=["POST"])
+@login_required
+def add_user():
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "")
+    role = request.form.get("role", "admin")
+    if not username or not password:
+        flash("Заполните имя и пароль", "danger")
+    elif Admin.query.filter_by(username=username).first():
+        flash("Такой пользователь уже есть", "danger")
+    else:
+        admin = Admin(username=username, role=role)
+        admin.set_password(password)
+        db.session.add(admin)
+        db.session.commit()
+        flash("Пользователь добавлен", "success")
+    return redirect(url_for("settings.users"))
+
+
+@bp.route("/users/<int:id>/delete", methods=["POST"])
+@login_required
+def delete_user(id):
+    admin = db.session.get(Admin, id) or abort(404)
+    if admin.id == session.get("admin_id"):
+        flash("Нельзя удалить самого себя", "danger")
+    else:
+        db.session.delete(admin)
+        db.session.commit()
+        flash("Пользователь удалён", "success")
+    return redirect(url_for("settings.users"))
+
+
+@bp.route("/users/<int:id>/role", methods=["POST"])
+@login_required
+def change_role(id):
+    admin = db.session.get(Admin, id) or abort(404)
+    admin.role = request.form.get("role", "admin")
+    db.session.commit()
+    flash("Роль обновлена", "success")
+    return redirect(url_for("settings.users"))

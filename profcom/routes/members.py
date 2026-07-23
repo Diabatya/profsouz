@@ -18,7 +18,7 @@ from flask import (
 )
 from openpyxl import load_workbook
 
-from models import Group, Member, MemberChild, MemberStatusHistory, Position, db
+from models import Group, Member, MemberChild, MemberComment, MemberStatusHistory, Position, db
 from utils import (
     apply_sort,
     dictionary_values,
@@ -261,182 +261,208 @@ def _get_or_create_group(name, group_type="category"):
     return group
 
 
+def _parse_import_preview(file_storage):
+    wb = load_workbook(filename=BytesIO(file_storage.read()), data_only=True)
+    ws = wb.active
+    first_row = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+    headers = [str(h).strip() if h else "" for h in first_row]
+
+    header_aliases = {
+        "ФИО": "full_name",
+        "Отдел": "department",
+        "Подразделение": "department",
+        "Должность": "position",
+        "Должность в профсоюзе": "union_position",
+        "Пол": "gender",
+        "Дата рождения": "birth_date",
+        "Дата вступления": "entry_date",
+    }
+    special_cols = {
+        "М": "male",
+        "Ж": "female",
+        "Декрет": "maternity",
+        "МОП": "mop",
+    }
+    col_map = {}
+    special_map = {}
+    for i, h in enumerate(headers):
+        h = str(h).strip()
+        if h in header_aliases:
+            col_map[header_aliases[h]] = i
+        if h in special_cols:
+            special_map[special_cols[h]] = i
+
+    required = ["full_name", "department", "birth_date"]
+    if not all(k in col_map for k in required):
+        return None, "В файле должны быть колонки: ФИО, Подразделение/Отдел, Дата рождения"
+
+    preview = []
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        full_name_raw = row[col_map["full_name"]] if "full_name" in col_map else None
+        full_name = title_name(str(full_name_raw).strip()) if full_name_raw else ""
+        department_raw = row[col_map["department"]] if "department" in col_map else None
+        department = str(department_raw).strip() if department_raw else ""
+        birth_date = _parse_date_value(row[col_map["birth_date"]]) if "birth_date" in col_map else None
+        entry_date = _parse_date_value(row[col_map["entry_date"]]) if "entry_date" in col_map else None
+        position = str(row[col_map["position"]]).strip() if "position" in col_map and row[col_map["position"]] else ""
+        union_position = (
+            str(row[col_map["union_position"]]).strip()
+            if "union_position" in col_map and row[col_map["union_position"]]
+            else ""
+        )
+        gender = ""
+        if "gender" in col_map and row[col_map["gender"]]:
+            g = str(row[col_map["gender"]]).strip().lower()
+            if g in ("м", "муж", "мужской", "male"):
+                gender = "male"
+            elif g in ("ж", "жен", "женский", "female"):
+                gender = "female"
+        else:
+            if "male" in special_map and _is_truthy_cell(row[special_map["male"]]):
+                gender = "male"
+            elif "female" in special_map and _is_truthy_cell(row[special_map["female"]]):
+                gender = "female"
+
+        maternity = "maternity" in special_map and _is_truthy_cell(row[special_map["maternity"]])
+        mop = "mop" in special_map and _is_truthy_cell(row[special_map["mop"]])
+
+        errors = []
+        if not full_name:
+            errors.append("ФИО")
+        if not department:
+            errors.append("отдел")
+        if not birth_date:
+            errors.append("дата рождения")
+
+        preview.append({
+            "row_idx": row_idx,
+            "full_name": full_name,
+            "department": department,
+            "position": position,
+            "union_position": union_position,
+            "gender": gender,
+            "birth_date": birth_date.strftime("%Y-%m-%d") if birth_date else "",
+            "entry_date": entry_date.strftime("%Y-%m-%d") if entry_date else "",
+            "maternity": maternity,
+            "mop": mop,
+            "errors": errors,
+            "valid": not errors,
+        })
+    return preview, None
+
+
 @bp.route("/import", methods=["GET", "POST"])
 @login_required
 def import_members():
     if request.method == "POST":
+        action = request.form.get("action", "preview")
+        if action == "save":
+            row_count = request.form.get("row_count", type=int) or 0
+            created = 0
+            updated = 0
+            errors = []
+            existing_map = {_normalize_full_name(m.full_name): m for m in Member.query.all()}
+            seen_departments = set()
+            seen_positions = set()
+            category_groups = {
+                "maternity": _get_or_create_group("Декрет"),
+                "mop": _get_or_create_group("МОП"),
+            }
+            try:
+                for i in range(row_count):
+                    full_name = request.form.get(f"full_name_{i}", "").strip()
+                    department = request.form.get(f"department_{i}", "").strip()
+                    position = request.form.get(f"position_{i}", "").strip() or None
+                    union_position_name = request.form.get(f"union_position_{i}", "").strip()
+                    gender = request.form.get(f"gender_{i}", "")
+                    birth_date = _parse_date_value(request.form.get(f"birth_date_{i}", ""))
+                    entry_date = _parse_date_value(request.form.get(f"entry_date_{i}", ""))
+                    if not full_name or not department or not birth_date:
+                        errors.append(f"Строка {i + 1}: не заполнены обязательные поля")
+                        continue
+
+                    member = _find_existing_member(full_name, existing_map)
+                    organization_position_id = None
+                    if union_position_name:
+                        pos = Position.query.filter_by(name=union_position_name, scope="organization").first()
+                        if not pos:
+                            pos = Position(name=union_position_name, scope="organization")
+                            db.session.add(pos)
+                            db.session.flush()
+                        organization_position_id = pos.id
+
+                    if member:
+                        member.department = department
+                        member.position = position
+                        member.organization_position_id = organization_position_id
+                        member.birth_date = birth_date
+                        member.entry_date = entry_date
+                        member.gender = gender
+                        updated += 1
+                    else:
+                        member = Member(
+                            full_name=full_name,
+                            department=department,
+                            position=position,
+                            organization_position_id=organization_position_id,
+                            birth_date=birth_date,
+                            entry_date=entry_date,
+                            status="active",
+                            gender=gender,
+                        )
+                        db.session.add(member)
+                        db.session.flush()
+                        existing_map[_normalize_full_name(full_name)] = member
+                        created += 1
+
+                    for key, group in category_groups.items():
+                        is_set = request.form.get(f"{key}_{i}") == "1"
+                        if is_set and group not in member.groups:
+                            member.groups.append(group)
+                        elif not is_set and group in member.groups:
+                            member.groups.remove(group)
+
+                    seen_departments.add(department)
+                    if position:
+                        seen_positions.add(position)
+                    db.session.add(
+                        MemberStatusHistory(
+                            member_id=member.id,
+                            old_status=None,
+                            new_status="active",
+                            note="Импорт из Excel",
+                        )
+                    )
+                db.session.commit()
+                for value in seen_departments:
+                    save_dictionary_value("department", value)
+                for value in seen_positions:
+                    save_dictionary_value("position", value)
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Ошибка сохранения: {e}", "danger")
+                return redirect(url_for("members.import_members"))
+
+            msg = f"Создано {created}, обновлено {updated} членов"
+            if errors:
+                msg += f", ошибок: {len(errors)}"
+                for e in errors[:10]:
+                    flash(e, "danger")
+                if len(errors) > 10:
+                    flash(f"... и ещё {len(errors) - 10} ошибок", "danger")
+            flash(msg, "success")
+            return redirect(url_for("members.index"))
+
         file = request.files.get("file")
         if not file or not file.filename.lower().endswith(".xlsx"):
             flash("Загрузите файл Excel (.xlsx)", "danger")
             return redirect(url_for("members.import_members"))
-
-        wb = load_workbook(filename=BytesIO(file.read()), data_only=True)
-        ws = wb.active
-        first_row = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-        headers = [str(h).strip() if h else "" for h in first_row]
-
-        header_aliases = {
-            "ФИО": "full_name",
-            "Отдел": "department",
-            "Подразделение": "department",
-            "Должность": "position",
-            "Должность в профсоюзе": "union_position",
-            "Пол": "gender",
-            "Дата рождения": "birth_date",
-            "Дата вступления": "entry_date",
-        }
-        special_cols = {
-            "М": "male",
-            "Ж": "female",
-            "Декрет": "maternity",
-            "МОП": "mop",
-        }
-        col_map = {}
-        special_map = {}
-        for i, h in enumerate(headers):
-            h = str(h).strip()
-            if h in header_aliases:
-                col_map[header_aliases[h]] = i
-            if h in special_cols:
-                special_map[special_cols[h]] = i
-
-        required = ["full_name", "department", "birth_date"]
-        if not all(k in col_map for k in required):
-            flash("В файле должны быть колонки: ФИО, Подразделение/Отдел, Дата рождения", "danger")
+        preview, error = _parse_import_preview(file)
+        if error:
+            flash(error, "danger")
             return redirect(url_for("members.import_members"))
-
-        # загружаем текущих членов для поиска дубликатов (с нормализацией)
-        existing_map = {_normalize_full_name(m.full_name): m for m in Member.query.all()}
-
-        created = 0
-        updated = 0
-        errors = []
-        seen_departments = set()
-        seen_positions = set()
-        category_groups = {
-            "maternity": _get_or_create_group("Декрет"),
-            "mop": _get_or_create_group("МОП"),
-        }
-        try:
-            for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-                full_name = (
-                    title_name(str(row[col_map["full_name"]])) if row[col_map["full_name"]] else ""
-                )
-                department = (
-                    str(row[col_map["department"]]).strip() if row[col_map["department"]] else ""
-                )
-                if not full_name:
-                    errors.append(f"Строка {row_idx}: не указано ФИО")
-                    continue
-                if not department:
-                    errors.append(f"Строка {row_idx}: не указан отдел")
-                    continue
-                birth_date = _parse_date_value(row[col_map["birth_date"]])
-                if not birth_date:
-                    errors.append(f"Строка {row_idx}: неверная дата рождения")
-                    continue
-
-                entry_date = (
-                    _parse_date_value(row[col_map["entry_date"]])
-                    if "entry_date" in col_map
-                    else None
-                )
-
-                position = None
-                if "position" in col_map and row[col_map["position"]]:
-                    position = str(row[col_map["position"]]).strip() or None
-
-                organization_position_id = None
-                if "union_position" in col_map and row[col_map["union_position"]]:
-                    pos_name = str(row[col_map["union_position"]]).strip()
-                    pos = Position.query.filter_by(name=pos_name, scope="organization").first()
-                    if not pos:
-                        pos = Position(name=pos_name, scope="organization")
-                        db.session.add(pos)
-                        db.session.flush()
-                    organization_position_id = pos.id
-
-                gender = Member.detect_gender(full_name)
-                if "gender" in col_map and row[col_map["gender"]]:
-                    g = str(row[col_map["gender"]]).strip().lower()
-                    if g in ("м", "муж", "мужской", "male"):
-                        gender = "male"
-                    elif g in ("ж", "жен", "женский", "female"):
-                        gender = "female"
-                else:
-                    if "male" in special_map and _is_truthy_cell(row[special_map["male"]]):
-                        gender = "male"
-                    elif "female" in special_map and _is_truthy_cell(row[special_map["female"]]):
-                        gender = "female"
-
-                member = _find_existing_member(full_name, existing_map)
-                if member:
-                    member.department = department
-                    member.position = position
-                    member.organization_position_id = organization_position_id
-                    member.birth_date = birth_date
-                    member.entry_date = entry_date
-                    member.gender = gender
-                    note = "Обновление при импорте Excel"
-                    updated += 1
-                else:
-                    member = Member(
-                        full_name=full_name,
-                        department=department,
-                        position=position,
-                        organization_position_id=organization_position_id,
-                        birth_date=birth_date,
-                        entry_date=entry_date,
-                        status="active",
-                        gender=gender,
-                    )
-                    db.session.add(member)
-                    db.session.flush()
-                    existing_map[_normalize_full_name(full_name)] = member
-                    note = "Импорт из Excel"
-                    created += 1
-
-                # категории/группы
-                for key, group in category_groups.items():
-                    col = special_map.get(key)
-                    is_set = (
-                        _is_truthy_cell(row[col]) if col is not None and col < len(row) else False
-                    )
-                    if is_set and group not in member.groups:
-                        member.groups.append(group)
-                    elif not is_set and group in member.groups:
-                        member.groups.remove(group)
-
-                seen_departments.add(department)
-                if position:
-                    seen_positions.add(position)
-                db.session.add(
-                    MemberStatusHistory(
-                        member_id=member.id, old_status=None, new_status="active", note=note
-                    )
-                )
-            db.session.commit()
-            for value in seen_departments:
-                save_dictionary_value("department", value)
-            for value in seen_positions:
-                save_dictionary_value("position", value)
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Ошибка импорта: {e}", "danger")
-            return redirect(url_for("members.import_members"))
-
-        msg = f"Создано {created}, обновлено {updated} членов"
-        if errors:
-            msg += f", ошибок: {len(errors)}"
-            for e in errors[:10]:
-                flash(e, "danger")
-            if len(errors) > 10:
-                flash(f"... и ещё {len(errors) - 10} ошибок", "danger")
-        flash(msg, "success")
-        return redirect(url_for("members.index"))
+        return render_template("members/import.html", preview=preview)
     return render_template("members/import.html")
-
-
 @bp.route("/import/template")
 @login_required
 def import_template():
@@ -456,6 +482,106 @@ def import_template():
     ]
     example = [1, 1, "00", "Руководство", "Иванов Иван Иванович", 1, "", "", "", date(1985, 3, 15)]
     return excel_response(headers, [example], "shablon_importa.xlsx")
+
+
+@bp.route("/import/children", methods=["GET", "POST"])
+@login_required
+def import_children():
+    if request.method == "POST":
+        file = request.files.get("file")
+        if not file or not file.filename.lower().endswith(".xlsx"):
+            flash("Загрузите файл Excel (.xlsx)", "danger")
+            return redirect(url_for("members.import_children"))
+
+        wb = load_workbook(filename=BytesIO(file.read()), data_only=True)
+        ws = wb.active
+        first_row = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+        headers = [str(h).strip() if h else "" for h in first_row]
+
+        header_aliases = {
+            "ФИО": "child_name",
+            "Ребенок": "child_name",
+            "ФИО ребенка": "child_name",
+            "Дата рождения": "birth_date",
+            "День рождения": "birth_date",
+            "Родитель": "parent_name",
+            "ФИО родителя": "parent_name",
+            "ФИО члена": "parent_name",
+            "Член профсоюза": "parent_name",
+        }
+        col_map = {}
+        for i, h in enumerate(headers):
+            h = str(h).strip()
+            if h in header_aliases:
+                col_map[header_aliases[h]] = i
+
+        if "child_name" not in col_map or "parent_name" not in col_map:
+            flash("В файле должны быть колонки: ФИО ребенка и ФИО родителя (члена профсоюза)", "danger")
+            return redirect(url_for("members.import_children"))
+
+        parents_map = {_normalize_full_name(m.full_name): m for m in Member.query.all()}
+        created = 0
+        updated = 0
+        errors = []
+
+        for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            child_raw = row[col_map["child_name"]] if col_map["child_name"] < len(row) else None
+            child_name = title_name(str(child_raw).strip()) if child_raw else ""
+            parent_raw = row[col_map["parent_name"]] if col_map["parent_name"] < len(row) else None
+            parent_name = title_name(str(parent_raw).strip()) if parent_raw else ""
+            birth_date = (
+                _parse_date_value(row[col_map["birth_date"]])
+                if "birth_date" in col_map and col_map["birth_date"] < len(row)
+                else None
+            )
+
+            if not child_name or not parent_name:
+                errors.append(f"Строка {row_idx}: не указано ФИО ребенка или родителя")
+                continue
+
+            parent = parents_map.get(_normalize_full_name(parent_name))
+            if not parent:
+                errors.append(f"Строка {row_idx}: родитель '{parent_name}' не найден")
+                continue
+
+            child = MemberChild.query.filter_by(member_id=parent.id, full_name=child_name).first()
+            if child:
+                child.birth_date = birth_date
+                updated += 1
+            else:
+                db.session.add(
+                    MemberChild(member_id=parent.id, full_name=child_name, birth_date=birth_date)
+                )
+                created += 1
+
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Ошибка импорта: {e}", "danger")
+            return redirect(url_for("members.import_children"))
+
+        msg = f"Создано {created}, обновлено {updated} детей"
+        if errors:
+            msg += f", ошибок: {len(errors)}"
+            for e in errors[:10]:
+                flash(e, "danger")
+            if len(errors) > 10:
+                flash(f"... и ещё {len(errors) - 10} ошибок", "danger")
+        flash(msg, "success")
+        return redirect(url_for("members.index"))
+
+    return render_template("members/import_children.html")
+
+
+@bp.route("/import/children/template")
+@login_required
+def import_children_template():
+    from utils import excel_response
+
+    headers = ["ФИО ребенка", "Дата рождения", "ФИО родителя"]
+    example = ["Иванов Петр Иванович", "2015-09-10", "Иванов Иван Иванович"]
+    return excel_response(headers, [example], "shablon_deti.xlsx")
 
 
 @bp.route("/<int:id>")
@@ -672,6 +798,31 @@ def delete_child(child_id):
     db.session.delete(child)
     db.session.commit()
     flash("Запись удалена", "success")
+    return redirect(url_for("members.detail", id=member_id))
+
+
+@bp.route("/<int:member_id>/comment", methods=["POST"])
+@login_required
+def add_comment(member_id):
+    member = db.session.get(Member, member_id) or abort(404)
+    text = (request.form.get("text") or "").strip()
+    if not text:
+        flash("Введите текст комментария", "danger")
+        return redirect(url_for("members.detail", id=member.id))
+    db.session.add(MemberComment(member_id=member.id, text=text))
+    db.session.commit()
+    flash("Комментарий добавлен", "success")
+    return redirect(url_for("members.detail", id=member.id))
+
+
+@bp.route("/comments/<int:comment_id>/delete", methods=["POST"])
+@login_required
+def delete_comment(comment_id):
+    comment = db.session.get(MemberComment, comment_id) or abort(404)
+    member_id = comment.member_id
+    db.session.delete(comment)
+    db.session.commit()
+    flash("Комментарий удалён", "success")
     return redirect(url_for("members.detail", id=member_id))
 
 

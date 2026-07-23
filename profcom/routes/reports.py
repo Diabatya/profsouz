@@ -1,7 +1,11 @@
-from flask import Blueprint, render_template, request
+from datetime import date
+from decimal import Decimal
 
-from models import Member, Payout, PayoutType
-from utils import login_required, parse_date
+from flask import Blueprint, redirect, render_template, request, url_for
+from sqlalchemy import extract
+
+from models import FinanceCommission, FinanceExpense, FinanceMonth, FinanceYear, Member, Payout, PayoutType, db
+from utils import excel_response, login_required, parse_date
 
 bp = Blueprint("reports", __name__, url_prefix="/reports")
 
@@ -98,3 +102,40 @@ def members_report():
             ]
         )
     return excel_response(headers, rows, "spisok_chlenov.xlsx")
+
+
+@bp.route("/finance")
+@login_required
+def finance_report():
+    year_value = request.args.get("year", type=int) or date.today().year
+    fy = FinanceYear.query.filter_by(year=year_value).first()
+    if not fy:
+        flash("Финансовый год не найден", "danger")
+        return redirect(url_for("reports.index"))
+
+    months = fy.months.order_by(FinanceMonth.month).all()
+    headers = ["Месяц", "Доход", "Расход", "Баланс месяца", "Нарастающий итог"]
+    cumulative = fy.ppo_opening + fy.charity_opening
+    rows = []
+    for m in months:
+        income = Decimal(m.gross_amount or 0)
+        month_expenses = sum(
+            (e.amount for e in fy.expenses.filter(extract("month", FinanceExpense.date) == m.month).all()),
+            Decimal(0),
+        )
+        month_commissions = sum(
+            (c.amount for c in fy.commissions.filter(extract("month", FinanceCommission.date) == m.month).all()),
+            Decimal(0),
+        )
+        month_balance = income - month_expenses - month_commissions
+        cumulative += month_balance
+        rows.append(
+            [
+                f"{m.month:02d}.{fy.year}",
+                float(income),
+                float(month_expenses + month_commissions),
+                float(month_balance),
+                float(cumulative),
+            ]
+        )
+    return excel_response(headers, rows, f"finansovy_otchet_{fy.year}.xlsx")

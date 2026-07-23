@@ -194,9 +194,8 @@ def year_add():
         return redirect(url_for("finances.index"))
 
     year = request.form.get("year", type=int)
-    auto_carryover = request.form.get("auto_carryover") == "on"
     prev_year = FinanceYear.query.filter_by(year=year - 1).first()
-    if prev_year and auto_carryover:
+    if prev_year:
         prev_totals = _year_totals(prev_year)
         ppo_opening = prev_totals["ppo_closing"]
         charity_opening = prev_totals["charity_closing"]
@@ -257,6 +256,25 @@ def year_edit(id):
 
     db.session.commit()
     flash("Год обновлен", "success")
+    return redirect(url_for("finances.index", year_id=fy.id))
+
+
+@bp.route("/year/<int:id>/recalc", methods=["POST"])
+@login_required
+def year_recalc(id):
+    if not _is_admin():
+        flash("Недостаточно прав", "danger")
+        return redirect(url_for("finances.index"))
+    fy = db.session.get(FinanceYear, id) or abort(404)
+    prev_year = FinanceYear.query.filter_by(year=fy.year - 1).first()
+    if not prev_year:
+        flash("Предыдущий год не найден", "danger")
+        return redirect(url_for("finances.index", year_id=fy.id))
+    prev_totals = _year_totals(prev_year)
+    fy.ppo_opening = prev_totals["ppo_closing"]
+    fy.charity_opening = prev_totals["charity_closing"]
+    db.session.commit()
+    flash("Остатки пересчитаны с учётом комиссий", "success")
     return redirect(url_for("finances.index", year_id=fy.id))
 
 

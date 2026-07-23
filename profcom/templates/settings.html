@@ -7,6 +7,18 @@
 </div>
 
 <div class="row g-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <h5 class="card-title mb-1">{{ icon('people') }} Пользователи и доступ</h5>
+          <p class="card-text text-muted mb-0">Добавление пользователей и роли «только чтение».</p>
+        </div>
+        <a href="{{ url_for('settings.users') }}" class="btn btn-outline-primary">{{ icon('arrow-right') }} Управление</a>
+      </div>
+    </div>
+  </div>
+
   <div class="col-lg-6">
     <div class="card">
       <div class="card-header">Типы выплат</div>

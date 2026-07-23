@@ -1,17 +1,20 @@
 {% extends 'base.html' %}
-{% from 'base.html' import icon, member_avatar %}
+{% from 'base.html' import icon %}
 {% block title %}Именинники{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <h1 class="h3 mb-0">Именинники</h1>
-  <form method="get" class="d-flex gap-2 align-items-center">
-    <select name="month" class="form-select" onchange="this.form.submit()">
-      {% for m in months %}
-      <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ '%02d'|format(m) }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" class="btn btn-primary">{{ icon('filter') }}</button>
-  </form>
+  <div class="d-flex gap-2 align-items-center">
+    <form method="get" class="d-flex gap-2 align-items-center">
+      <select name="month" class="form-select" onchange="this.form.submit()">
+        {% for m in months %}
+        <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ '%02d'|format(m) }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary">{{ icon('filter') }}</button>
+    </form>
+    <a href="{{ url_for('birthdays.export', month=month) }}" class="btn btn-outline-success">{{ icon('file-earmark-excel') }} Excel</a>
+  </div>
 </div>
 
 <div class="card">
@@ -31,19 +34,19 @@
         {% for row in rows %}
         <tr class="{% if row.is_anniversary %}anniversary-row{% endif %}">
           <td>
-            <div class="d-flex align-items-center gap-2">
-              {{ member_avatar(row.member, 40) }}
-              <span>{% if row.is_anniversary %}{{ icon('cake') }}{% endif %} <a href="{{ url_for('members.detail', id=row.member.id) }}" class="text-decoration-none">{{ row.member.full_name }}</a></span>
-            </div>
+            <a href="{{ url_for('members.detail', id=row.member.id) }}" class="text-decoration-none fs-5">{{ row.member.full_name }}</a>
           </td>
-          <td>{{ row.member.department }}</td>
+          <td>{{ row.member.department or '—' }}</td>
           <td>{{ row.member.birth_date|dt }}</td>
           <td>{{ row.age }}</td>
           <td>
             {% if row.is_anniversary %}
-            <span class="badge bg-danger">{{ row.age }} лет</span>
+            <span class="d-flex align-items-center gap-2">
+              <span class="text-danger fs-3">{{ icon('cake') }}</span>
+              <span class="badge bg-danger">{{ row.age }} лет</span>
+            </span>
             {% else %}
-            <span class="text-muted">-</span>
+            <span class="text-muted">—</span>
             {% endif %}
           </td>
           <td class="text-end">

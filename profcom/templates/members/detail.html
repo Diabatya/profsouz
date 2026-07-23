@@ -132,6 +132,29 @@
       </div>
     </div>
 
+    <div class="card mb-4">
+      <div class="card-header">Комментарии</div>
+      <div class="card-body">
+        {% for c in member.comments %}
+        <div class="d-flex justify-content-between align-items-start mb-2 p-2 bg-light rounded">
+          <div>
+            <p class="mb-1">{{ c.text }}</p>
+            <small class="text-muted">{{ c.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+          </div>
+          <form method="post" action="{{ url_for('members.delete_comment', comment_id=c.id) }}" class="d-inline delete-form">
+            <button type="submit" class="btn btn-sm btn-outline-danger">{{ icon('trash') }}</button>
+          </form>
+        </div>
+        {% else %}
+        <p class="text-muted mb-3">Комментариев пока нет</p>
+        {% endfor %}
+        <form method="post" action="{{ url_for('members.add_comment', member_id=member.id) }}" class="d-flex gap-2">
+          <textarea name="text" class="form-control" rows="2" placeholder="Добавить комментарий" required></textarea>
+          <button type="submit" class="btn btn-primary align-self-end">{{ icon('plus-lg') }}</button>
+        </form>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-header">История статуса</div>
       <div class="table-responsive">

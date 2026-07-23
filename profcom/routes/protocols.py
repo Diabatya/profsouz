@@ -13,7 +13,7 @@ from flask import (
     url_for,
 )
 
-from models import Payout, Protocol, db
+from models import FinanceExpense, FinanceYear, Payout, Protocol, db
 from utils import apply_sort, login_required, parse_date, parse_decimal
 
 bp = Blueprint("protocols", __name__, url_prefix="/protocols")
@@ -21,6 +21,34 @@ bp = Blueprint("protocols", __name__, url_prefix="/protocols")
 
 def allowed_pdf(filename):
     return filename and filename.lower().endswith(".pdf")
+
+
+def _get_or_create_finance_year(year):
+    fy = FinanceYear.query.filter_by(year=year).first()
+    if not fy:
+        fy = FinanceYear(year=year, ppo_opening=0, charity_opening=0)
+        db.session.add(fy)
+        db.session.commit()
+    return fy
+
+
+def _sync_protocol_expense(protocol):
+    for e in list(protocol.finance_expenses):
+        db.session.delete(e)
+    if protocol.total_amount and protocol.total_amount > 0:
+        year = _get_or_create_finance_year(protocol.date.year)
+        fe = FinanceExpense(
+            year_id=year.id,
+            date=protocol.date,
+            fund="ppo",
+            protocol_id=protocol.id,
+            protocol_number=protocol.number,
+            protocol_date=protocol.date,
+            description=f"Протокол №{protocol.number} от {protocol.date.strftime('%d.%m.%Y')}",
+            amount=protocol.total_amount,
+        )
+        db.session.add(fe)
+    db.session.commit()
 
 
 @bp.route("/")
@@ -67,9 +95,44 @@ def add():
         protocol = Protocol(number=number, date=pdate, total_amount=total, file_path=file_path)
         db.session.add(protocol)
         db.session.commit()
+        _sync_protocol_expense(protocol)
         flash("Протокол добавлен", "success")
         return redirect(url_for("protocols.index"))
     return render_template("protocols/add.html")
+
+
+@bp.route("/<int:id>/edit", methods=["GET", "POST"])
+@login_required
+def edit(id):
+    protocol = db.session.get(Protocol, id) or abort(404)
+    if request.method == "POST":
+        number = request.form.get("number", "").strip()
+        pdate = parse_date(request.form.get("date"))
+        total = parse_decimal(request.form.get("total_amount", "0"))
+        file = request.files.get("file")
+
+        if not number or not pdate:
+            flash("Укажите номер и дату протокола", "danger")
+            return render_template("protocols/edit.html", protocol=protocol)
+
+        if file and allowed_pdf(file.filename):
+            if protocol.file_path and os.path.exists(protocol.file_path):
+                os.remove(protocol.file_path)
+            filename = f"{uuid4()}.pdf"
+            upload_dir = current_app.config["UPLOAD_FOLDER"]
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, filename)
+            file.save(file_path)
+            protocol.file_path = file_path
+
+        protocol.number = number
+        protocol.date = pdate
+        protocol.total_amount = total
+        db.session.commit()
+        _sync_protocol_expense(protocol)
+        flash("Протокол обновлён", "success")
+        return redirect(url_for("protocols.index"))
+    return render_template("protocols/edit.html", protocol=protocol)
 
 
 @bp.route("/<int:id>")

@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Пользователи{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">{{ icon('people') }} Пользователи</h1>
+  <a href="{{ url_for('settings.index') }}" class="btn btn-outline-secondary">{{ icon('arrow-left') }} Назад</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">{{ icon('plus-lg') }} Добавить пользователя</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('settings.add_user') }}" class="row g-3 align-items-end">
+      <div class="col-md-3"><input type="text" name="username" class="form-control" placeholder="Логин" required></div>
+      <div class="col-md-3"><input type="password" name="password" class="form-control" placeholder="Пароль" required></div>
+      <div class="col-md-2">
+        <select name="role" class="form-select">
+          <option value="admin">Полный доступ</option>
+          <option value="readonly">Только чтение</option>
+        </select>
+      </div>
+      <div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Добавить</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Логин</th>
+            <th>Роль</th>
+            <th class="text-end">Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>{{ u.username }}</td>
+            <td>
+              <form method="post" action="{{ url_for('settings.change_role', id=u.id) }}" class="d-flex gap-2 align-items-center">
+                <select name="role" class="form-select form-select-sm" style="width:auto;">
+                  <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Полный доступ</option>
+                  <option value="readonly" {% if u.role == 'readonly' %}selected{% endif %}>Только чтение</option>
+                </select>
+                <button type="submit" class="btn btn-sm btn-outline-primary">{{ icon('check-lg') }}</button>
+              </form>
+            </td>
+            <td class="text-end">
+              <form method="post" action="{{ url_for('settings.delete_user', id=u.id) }}" class="d-inline delete-form">
+                <button type="submit" class="btn btn-sm btn-outline-danger" {% if u.id == session.admin_id %}disabled{% endif %}>{{ icon('trash') }}</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
