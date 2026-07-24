@@ -234,7 +234,7 @@ main {
 }
 
 @media print {
-  nav, footer, .btn, .delete-form, .no-print, .pagination, .card-header .btn, .input-group, form {
+  nav, footer, .btn, .delete-form, .no-print, .pagination, .card-header .btn, .input-group, form, .sidebar, .sidebar-collapse {
     display: none !important;
   }
   body {

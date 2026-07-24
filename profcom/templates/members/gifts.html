@@ -4,7 +4,34 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <h1 class="h3 mb-0">Списки подарков</h1>
-  <a href="{{ url_for('members.gifts', export=1, department=request.args.get('department',''), position=request.args.get('position',''), max_age=request.args.get('max_age','')) }}" class="btn btn-outline-success">{{ icon('file-earmark-excel') }} Excel</a>
+  <a href="{{ url_for('members.gifts', export=1, department=request.args.get('department',''), position=request.args.get('position',''), min_age=request.args.get('min_age',''), max_age=request.args.get('max_age',''), child_gender=request.args.get('child_gender',''), status=request.args.get('status','')) }}" class="btn btn-outline-success">{{ icon('file-earmark-excel') }} Excel</a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <h6 class="card-title">Взрослых</h6>
+        <p class="display-6">{{ total_adults }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <h6 class="card-title">Детей</h6>
+        <p class="display-6">{{ total_children }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card h-100">
+      <div class="card-body">
+        <h6 class="card-title">Всего подарков</h6>
+        <p class="display-6">{{ total_gifts }}</p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="card mb-4">
@@ -18,21 +45,40 @@
         </datalist>
       </div>
       <div class="col-md-3">
-        <label class="form-label">Должность в профсоюзе</label>
+        <label class="form-label">Должность</label>
         <input type="text" name="position" class="form-control" value="{{ position }}" list="positions" placeholder="Все">
         <datalist id="positions">
           {% for p in positions %}<option value="{{ p }}">{% endfor %}
         </datalist>
       </div>
       <div class="col-md-2">
-        <label class="form-label">Макс. возраст детей</label>
+        <label class="form-label">Возраст от</label>
+        <input type="number" name="min_age" class="form-control" value="{{ min_age or '' }}" placeholder="Все">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Возраст до</label>
         <input type="number" name="max_age" class="form-control" value="{{ max_age or '' }}" placeholder="Все">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Пол ребёнка</label>
+        <select name="child_gender" class="form-select">
+          <option value="" {% if not child_gender %}selected{% endif %}>Все</option>
+          <option value="male" {% if child_gender == 'male' %}selected{% endif %}>М</option>
+          <option value="female" {% if child_gender == 'female' %}selected{% endif %}>Ж</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Статус</label>
+        <select name="status" class="form-select">
+          <option value="active" {% if status == 'active' %}selected{% endif %}>Активные</option>
+          <option value="" {% if not status %}selected{% endif %}>Все</option>
+        </select>
       </div>
       <div class="col-md-2">
         <button type="submit" class="btn btn-primary">{{ icon('filter') }}</button>
       </div>
     </form>
-    <div class="form-text">Укажите возраст, если нужен список детских подарков (например, до 14 лет).</div>
+    <div class="form-text">Укажите возраст, если нужен список детских подарков (например, от 0 до 14 лет).</div>
   </div>
 </div>
 
@@ -71,6 +117,15 @@
         <tr><td colspan="8" class="text-center text-muted py-4">Нет данных</td></tr>
         {% endfor %}
       </tbody>
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td colspan="4">Итого</td>
+          <td>{{ total_adults }}</td>
+          <td>{{ total_children }}</td>
+          <td>{{ total_gifts }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
     </table>
   </div>
 </div>

@@ -6,6 +6,7 @@
   <h1 class="h3 mb-0">Выплаты</h1>
   <div>
     <a href="{{ url_for('payouts.gifts') }}" class="btn btn-outline-info me-1">{{ icon('gift') }} Подарки</a>
+    <a href="{{ url_for('payouts.statement') }}" class="btn btn-outline-info me-1">{{ icon('printer') }} Ведомость</a>
     <a href="{{ url_for('payouts.export') }}?date_from={{ request.args.get('date_from','') }}&date_to={{ request.args.get('date_to','') }}" class="btn btn-outline-success me-1">{{ icon('file-earmark-excel') }} Excel</a>
     <a href="{{ url_for('payouts.add') }}" class="btn btn-success">{{ icon('plus-lg') }} Добавить</a>
   </div>

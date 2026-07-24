@@ -65,7 +65,7 @@
                 <form method="post" action="{{ url_for('finances.month_save') }}" class="row g-1 align-items-center">
                   <input type="hidden" name="year_id" value="{{ year.id }}">
                   <input type="hidden" name="month" value="{{ row.month }}">
-                  <div class="col"><input type="text" name="income" class="form-control form-control-sm" value="{{ row.income }}"></div>
+                  <div class="col"><input type="text" name="gross_amount" class="form-control form-control-sm" value="{{ row.income }}"></div>
                   <div class="col-auto"><button type="submit" class="btn btn-sm btn-primary" title="Сохранить">{{ icon('floppy') }}</button></div>
                 </form>
                 {% else %}

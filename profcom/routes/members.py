@@ -578,7 +578,10 @@ def import_children():
 
             parent = parents_map.get(_normalize_full_name(parent_name))
             if not parent:
-                errors.append(f"Строка {row_idx}: родитель '{parent_name}' не найден")
+                errors.append(
+                    f"Строка {row_idx}: ребёнок '{child_name}' — "
+                    f"родитель '{parent_name}' не найден; исправьте вручную"
+                )
                 continue
 
             child = MemberChild.query.filter_by(member_id=parent.id, full_name=child_name).first()
@@ -868,17 +871,26 @@ def delete_comment(comment_id):
 def gifts():
     department = request.args.get("department", "").strip()
     position = request.args.get("position", "").strip()
+    min_age = request.args.get("min_age", type=int)
     max_age = request.args.get("max_age", type=int)
+    child_gender = request.args.get("child_gender", "").strip().lower()
+    status = request.args.get("status", "active").strip().lower()
     export = request.args.get("export", "")
 
-    q = Member.query.filter_by(status="active")
+    q = Member.query
+    if status:
+        q = q.filter(Member.status == status)
     if department:
         q = q.filter(Member.department == department)
     if position:
         q = q.filter(Member.position == position)
     members = q.order_by(Member.full_name).all()
+
     today = date.today()
     result = []
+    total_adults = 0
+    total_children = 0
+    total_gifts = 0
     for m in members:
         children = []
         for child in m.children:
@@ -889,10 +901,18 @@ def gifts():
                     - child.birth_date.year
                     - ((today.month, today.day) < (child.birth_date.month, child.birth_date.day))
                 )
-            if max_age is None or (age is not None and age <= max_age):
-                children.append({"child": child, "age": age})
-        total_gifts = 1 + len(children)
-        result.append({"member": m, "children": children, "total": total_gifts})
+            if min_age is not None and (age is None or age < min_age):
+                continue
+            if max_age is not None and (age is None or age > max_age):
+                continue
+            if child_gender and child.gender != child_gender:
+                continue
+            children.append({"child": child, "age": age})
+        total_adults += 1
+        total_children += len(children)
+        member_total = 1 + len(children)
+        total_gifts += member_total
+        result.append({"member": m, "children": children, "total": member_total})
 
     if export:
         from utils import excel_response
@@ -922,7 +942,13 @@ def gifts():
         rows=result,
         department=department,
         position=position,
+        min_age=min_age,
         max_age=max_age,
+        child_gender=child_gender,
+        status=status,
+        total_adults=total_adults,
+        total_children=total_children,
+        total_gifts=total_gifts,
         departments=dictionary_values("department"),
         positions=dictionary_values("position"),
     )

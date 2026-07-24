@@ -88,6 +88,34 @@ def _year_totals(year):
     }
 
 
+def _build_month_rows(year, months, expenses):
+    fm_map = {m.month: m for m in months}
+    expenses_by_month = {}
+    for e in expenses:
+        expenses_by_month.setdefault(e.date.month, []).append(e)
+    cumulative = Decimal(0)
+    rows = []
+    for i in range(1, 13):
+        fm = fm_map.get(i)
+        income = fm.gross_amount if fm else Decimal(0)
+        month_expenses = expenses_by_month.get(i, [])
+        expense_total = sum((e.amount for e in month_expenses), Decimal(0))
+        balance = income - expense_total
+        cumulative += balance
+        rows.append(
+            {
+                "month": i,
+                "name": MONTH_NAMES[i - 1].title(),
+                "fm": fm,
+                "income": income,
+                "expenses": month_expenses,
+                "balance": balance,
+                "cumulative": cumulative,
+            }
+        )
+    return rows
+
+
 def _parse_protocol_info(text):
     if not text:
         return None, None
@@ -141,6 +169,7 @@ def index():
     expenses = []
     commissions = []
     chart_bars = []
+    month_rows = []
     if year:
         months = year.months.order_by(FinanceMonth.month).all()
         expenses = year.expenses.order_by(FinanceExpense.date.desc()).all()
@@ -170,6 +199,7 @@ def index():
                     "expense_h": int(exp / max_val * 100) if max_val else 0,
                 }
             )
+        month_rows = _build_month_rows(year, months, expenses)
     year_summaries = [(y, _year_totals(y)) for y in years]
     return render_template(
         "finances/index.html",
@@ -181,6 +211,7 @@ def index():
         commissions=commissions,
         totals=totals,
         chart_bars=chart_bars,
+        month_rows=month_rows,
         month_names=MONTH_NAMES,
         is_admin=_is_admin(),
     )

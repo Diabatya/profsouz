@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 from flask import (
     Blueprint,
@@ -77,6 +78,38 @@ def index():
         sort=sort,
         order=order,
         per_page=per_page,
+    )
+
+
+@bp.route("/statement")
+@login_required
+def statement():
+    pnumber = (request.args.get("protocol_number") or "").strip()
+    ptype_id = request.args.get("type", type=int)
+    date_from = parse_date(request.args.get("date_from"))
+    date_to = parse_date(request.args.get("date_to"))
+
+    q = Payout.query.join(Member).outerjoin(Protocol)
+    if pnumber:
+        q = q.filter(Protocol.number.ilike(f"%{pnumber}%"))
+    if ptype_id:
+        q = q.filter(Payout.type_id == ptype_id)
+    if date_from:
+        q = q.filter(Payout.date >= date_from)
+    if date_to:
+        q = q.filter(Payout.date <= date_to)
+    payouts = q.order_by(Member.full_name).all()
+    total = sum((p.amount for p in payouts), Decimal(0))
+    types = PayoutType.query.order_by(PayoutType.name).all()
+    return render_template(
+        "payouts/statement.html",
+        payouts=payouts,
+        total=total,
+        types=types,
+        protocol_number=pnumber,
+        selected_type=ptype_id,
+        date_from=request.args.get("date_from", ""),
+        date_to=request.args.get("date_to", ""),
     )
 
 

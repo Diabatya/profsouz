@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% from 'base.html' import icon %}
+{% block title %}Ведомость выплат{% endblock %}
+{% block content %}
+<div class="no-print d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <h1 class="h3 mb-0">Ведомость выплат</h1>
+  <a href="{{ url_for('payouts.index') }}" class="btn btn-outline-secondary">{{ icon('arrow-left') }} Назад</a>
+</div>
+
+<div class="card mb-4 no-print">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">Протокол (номер)</label>
+        <input type="text" name="protocol_number" class="form-control" value="{{ protocol_number }}" placeholder="№ ...">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Тип выплаты</label>
+        <select name="type" class="form-select">
+          <option value="">Все</option>
+          {% for t in types %}
+          <option value="{{ t.id }}" {% if selected_type == t.id %}selected{% endif %}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">С</label>
+        <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">По</label>
+        <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">{{ icon('filter') }}</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">{{ icon('printer') }} Печать</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h4 class="text-center mb-4">Ведомость выплат</h4>
+    <p class="text-center text-muted small mb-4">
+      Период: {% if date_from %}{{ date_from }}{% else %}—{% endif %} – {% if date_to %}{{ date_to }}{% else %}—{% endif %}
+      {% if protocol_number %}, протокол {{ protocol_number }}{% endif %}
+      {% if selected_type %}, {{ types | selectattr('id', 'equalto', selected_type) | map(attribute='name') | first }}{% endif %}
+    </p>
+    <table class="table table-bordered align-middle">
+      <thead>
+        <tr>
+          <th style="width: 10%;">№</th>
+          <th style="width: 40%;">ФИО</th>
+          <th style="width: 20%;" class="text-end">Сумма</th>
+          <th style="width: 30%;" class="text-center">Подпись</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in payouts %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ p.member.full_name }}</td>
+          <td class="text-end">{{ p.amount|money }} ₽</td>
+          <td></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-center text-muted py-4">Нет выплат по выбранным критериям</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2" class="text-end fw-bold">Итого</td>
+          <td class="text-end fw-bold">{{ total|money }} ₽</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endblock %}
