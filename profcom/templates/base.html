@@ -11,7 +11,47 @@
 </head>
 <body>
   {% macro icon(name, cls='') -%}
-    <svg class="bi {{ cls }}" aria-hidden="true"><use href="{{ url_for('static', filename='icons/bootstrap-icons.svg') }}#{{ name }}"></use></svg>
+    {%- set icons = {
+      'arrow-down-circle': '⬇',
+      'arrow-left': '←',
+      'arrow-repeat': '↻',
+      'arrow-right': '→',
+      'arrow-up': '↑',
+      'box-arrow-in-right': '➡',
+      'box-arrow-right': '➡',
+      'box-seam': '📦',
+      'building': '🏢',
+      'cake': '🎂',
+      'cash': '💰',
+      'check-lg': '✓',
+      'clock-history': '🕒',
+      'download': '⬇',
+      'exclamation-triangle': '⚠',
+      'eye': '👁',
+      'file-earmark-arrow-up': '📤',
+      'file-earmark-excel': '📊',
+      'file-earmark-text': '📄',
+      'filter': '🔍',
+      'floppy': '💾',
+      'gear': '⚙',
+      'gift': '🎁',
+      'graph-up': '📈',
+      'grid': '⊞',
+      'house': '🏠',
+      'journal-text': '📓',
+      'list': '☰',
+      'lock': '🔒',
+      'pencil': '✏',
+      'people': '👥',
+      'plus-lg': '➕',
+      'printer': '🖨',
+      'search': '🔎',
+      'table': '▦',
+      'trash': '🗑',
+      'upload': '⬆',
+      'x-lg': '✕'
+    } -%}
+    <span class="bi {{ cls }}" aria-hidden="true">{{ icons.get(name, '•') }}</span>
   {%- endmacro %}
 
   {% macro avatar(name, size=40) -%}

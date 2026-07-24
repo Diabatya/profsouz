@@ -1,4 +1,3 @@
-import difflib
 import os
 import re
 import uuid
@@ -220,15 +219,7 @@ def _normalize_full_name(name):
 
 def _find_existing_member(full_name, existing_map):
     norm = _normalize_full_name(full_name)
-    if not norm:
-        return None
-    member = existing_map.get(norm)
-    if member:
-        return member
-    close = difflib.get_close_matches(norm, existing_map.keys(), n=1, cutoff=0.85)
-    if close:
-        return existing_map.get(close[0])
-    return None
+    return existing_map.get(norm) if norm else None
 
 
 def _parse_date_value(value):
@@ -409,9 +400,15 @@ def import_members():
                 "maternity": _get_or_create_group("Декрет"),
                 "mop": _get_or_create_group("МОП"),
             }
+            seen_names = set()
             try:
                 for idx, row in enumerate(rows, start=1):
                     full_name = row["full_name"].strip()
+                    norm = _normalize_full_name(full_name)
+                    if norm in seen_names:
+                        errors.append(f"Строка {idx}: дубликат ФИО")
+                        continue
+                    seen_names.add(norm)
                     department = row["department"].strip()
                     position = row["position"].strip() or None
                     union_position_name = row["union_position"].strip()
